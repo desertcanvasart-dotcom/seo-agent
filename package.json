@@ -1,0 +1,41 @@
+{
+  "name": "internal-linking-agent",
+  "version": "1.0.0",
+  "description": "SEO/GEO Agent — audit, internal linking, research, and content briefs",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "migrate": "tsx src/db/migrate.ts",
+    "generate-key": "tsx src/utils/generate-api-key.ts"
+  },
+  "keywords": [
+    "seo",
+    "geo",
+    "internal-linking",
+    "audit"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
+    "@hono/node-server": "^1.19.12",
+    "@supabase/supabase-js": "^2.101.1",
+    "bull": "^4.16.5",
+    "cheerio": "^1.2.0",
+    "dotenv": "^17.4.1",
+    "hono": "^4.12.10",
+    "ioredis": "^5.10.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^6.33.0",
+    "puppeteer": "^24.40.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
