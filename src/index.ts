@@ -19,6 +19,11 @@ const app = new Hono();
 app.use("*", cors());
 app.use("*", logger());
 
+// Debug route
+app.get("/debug", (c) => {
+  return c.json({ routes: "working", prefix: env.API_PREFIX, port: env.PORT });
+});
+
 // Public routes (no auth needed)
 app.route("/", health);
 
