@@ -37,9 +37,9 @@ export default function HomePage() {
         </div>
 
         <h1 className="text-[44px] md:text-[56px] leading-[1.1] font-bold tracking-tight text-[#1a1a1a] max-w-3xl mx-auto">
-          Turn any website into a{" "}
-          <span className="italic text-[#2d5a3d]">fully optimized</span>{" "}
-          SEO machine.
+          Make your website{" "}
+          <span className="italic text-[#2d5a3d]">visible everywhere</span>{" "}
+          — Google and AI.
         </h1>
 
         <p className="text-lg text-[#5c5c5c] mt-6 max-w-2xl mx-auto leading-relaxed">
@@ -75,7 +75,7 @@ export default function HomePage() {
       <section className="max-w-6xl mx-auto px-6 py-16">
         <div className="text-center mb-12">
           <h2 className="text-3xl font-bold text-[#1a1a1a]">
-            Your Current SEO Stack Is <span className="italic text-[#2d5a3d]">Fragmented.</span>
+            Your SEO &amp; GEO Stack Is <span className="italic text-[#2d5a3d]">Fragmented.</span>
           </h2>
           <p className="text-[#5c5c5c] mt-3 max-w-xl mx-auto">
             One tool for audits. Another for keywords. Another for content. None of them talk to each other, and none optimize for AI search.
@@ -196,8 +196,8 @@ export default function HomePage() {
       {/* Bottom CTA */}
       <section className="bg-[#1a1a2e]">
         <div className="max-w-6xl mx-auto px-6 py-20 text-center">
-          <h2 className="text-3xl font-bold text-white mb-3">Stop Guessing Your SEO.</h2>
-          <p className="text-[#8b8fa3] mb-8 max-w-lg mx-auto">Paste your URL. Get a full analysis in minutes. Free to start, no credit card required.</p>
+          <h2 className="text-3xl font-bold text-white mb-3">Stop Being Invisible to AI Search.</h2>
+          <p className="text-[#8b8fa3] mb-8 max-w-lg mx-auto">Optimize for Google and AI assistants in one platform. Paste your URL, get a full SEO &amp; GEO analysis in minutes. Free to start.</p>
           <Link href="/signup" className="inline-flex items-center gap-2 bg-[#2d5a3d] text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-[#3a7350] transition-colors">
             Start Free Analysis
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -221,7 +221,7 @@ export default function HomePage() {
               <Link href="/signup" className="hover:text-[#1a1a1a]">Sign Up</Link>
             </div>
           </div>
-          <p className="text-xs text-[#8c8c8c] mt-6">Built for modern SEO — Google and AI search, in one platform.</p>
+          <p className="text-xs text-[#8c8c8c] mt-6">SEO &amp; GEO optimization — rank on Google and get cited by AI.</p>
         </div>
       </footer>
     </div>

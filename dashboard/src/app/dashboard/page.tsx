@@ -47,7 +47,7 @@ export default async function DashboardPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sites.map((site: any) => (
-            <Link key={site.id} href={`/sites/${site.id}`} className="group">
+            <Link key={site.id} href={`/dashboard/sites/${site.id}`} className="group">
               <div className="bg-white border border-[#e8e5e0] rounded-2xl p-5 hover:border-[#2d5a3d]/40 hover:shadow-sm transition-all">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">

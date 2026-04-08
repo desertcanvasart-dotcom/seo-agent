@@ -57,8 +57,8 @@ export async function addSiteAction(_prevState: any, formData: FormData) {
 export async function deleteSiteAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   await deleteSite(siteId);
-  revalidatePath("/");
-  redirect("/");
+  revalidatePath("/dashboard");
+  redirect("/dashboard");
 }
 
 // ─── Re-crawl a site ─────────────────────────────────────────────
