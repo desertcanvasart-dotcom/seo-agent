@@ -177,6 +177,12 @@ export async function auditSite(
   console.log(`   Avg GEO score: ${summary.avg_geo_score}`);
   console.log(`   Critical issues: ${summary.critical_count}`);
 
+  // Auto-record score snapshot
+  try {
+    const { recordScoreSnapshot } = await import("./scheduler.js");
+    await recordScoreSnapshot(siteId);
+  } catch {}
+
   return { results, summary };
 }
 

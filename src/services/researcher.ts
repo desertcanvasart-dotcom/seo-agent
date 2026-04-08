@@ -50,22 +50,26 @@ async function fetchCompetitorPage(url: string): Promise<CompetitorPage | null> 
     const html = await res.text();
     const $ = cheerio.load(html);
 
-    // Remove noise
-    $("script, style, noscript, iframe, svg, nav, [role='navigation']").remove();
+    // Remove noise elements
+    $("script, style, noscript, iframe, svg").remove();
 
     const title = $("title").text().trim();
     const metaDesc = $('meta[name="description"]').attr("content")?.trim() || "";
     const h1 = $("h1").first().text().trim();
 
-    // Headings
+    // Remove nav, footer, header, sidebar for content extraction
+    const contentArea = $("body").clone();
+    contentArea.find("nav, header, footer, aside, [role='navigation'], [role='banner'], [role='contentinfo'], form, .nav, .menu, .footer, .header, .sidebar, .cookie, .popup").remove();
+
+    // Headings from content area only
     const headings: string[] = [];
-    $("h1, h2, h3").each((_, el) => {
+    contentArea.find("h1, h2, h3").each((_, el) => {
       const text = $(el).text().trim();
       if (text && text.length > 3) headings.push(text);
     });
 
-    // Body text
-    const bodyText = $("body").text().replace(/\s+/g, " ").trim();
+    // Body text from content area
+    const bodyText = contentArea.text().replace(/\s+/g, " ").trim();
     const wordCount = bodyText.split(/\s+/).filter(Boolean).length;
 
     // Extract topics from headings and content
@@ -107,17 +111,47 @@ async function fetchCompetitorPage(url: string): Promise<CompetitorPage | null> 
   }
 }
 
+// ─── Noise words to filter out ───────────────────────────────────
+const NOISE_PATTERNS = [
+  // Form fields and UI elements
+  /^(submit|cancel|close|open|click|select|choose|enter|type|search|filter|sort|clear|reset|apply|save|edit|delete|remove|add|create|update|upload|download|sign|log|register|subscribe|unsubscribe)(\s|$)/i,
+  /^(your |my |our |the |a |an )\w{0,10}$/i,
+  // Navigation and layout
+  /^(menu|nav|header|footer|sidebar|breadcrumb|pagination|next|prev|previous|back|home|sitemap|copyright|all rights|terms|privacy|cookie|accept|decline)/i,
+  // Form labels
+  /^(first name|last name|email|phone|password|address|city|state|zip|country|date|number of|age of|desired|preferred|select a|choose a|enter your|your name|your email)/i,
+  // Generic UI
+  /^(read more|learn more|see more|view all|show more|load more|get started|contact us|about us|follow us|share|tweet|pin|like)/i,
+  // Too short or just numbers
+  /^\d+$|^.{1,4}$/,
+  // Common repeated footer/header text
+  /^(company|resources|support|help|blog|careers|press|investors|partners|legal|sitemap|social|connect)/i,
+];
+
+function isNoise(text: string): boolean {
+  const t = text.trim().toLowerCase();
+  if (t.length < 8) return true;  // Too short to be meaningful
+  if (t.length > 80) return true; // Too long, probably a sentence not a topic
+  if (t.split(/\s+/).length < 2) return true; // Single word
+  if (t.split(/\s+/).length > 10) return true; // Too many words
+  for (const pattern of NOISE_PATTERNS) {
+    if (pattern.test(t)) return true;
+  }
+  return false;
+}
+
 // ─── Extract topics from page content ────────────────────────────
 function extractTopics(headings: string[], bodyText: string, title: string): string[] {
   const topics = new Set<string>();
 
-  // Topics from headings (most reliable)
+  // Topics from headings (most reliable) — but filter noise
   for (const h of headings) {
     const clean = h
       .toLowerCase()
       .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, " ")
       .trim();
-    if (clean.length > 3 && clean.length < 80) {
+    if (!isNoise(clean)) {
       topics.add(clean);
     }
   }
@@ -125,27 +159,31 @@ function extractTopics(headings: string[], bodyText: string, title: string): str
   // Topics from title
   const titleClean = title
     .toLowerCase()
-    .replace(/[|–-]\s*[^|–-]*$/, "") // Remove site name
+    .replace(/[|–-]\s*[^|–-]*$/, "")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, " ")
     .trim();
-  if (titleClean.length > 3) topics.add(titleClean);
+  if (!isNoise(titleClean)) topics.add(titleClean);
 
-  // Common topic patterns from body (generic, works for any industry)
+  // Content-focused patterns (questions, guides, comparisons)
   const patterns = [
-    /best\s+(?:places?|things?|time|ways?|options?|tools?)\s+(?:to|in|for)\s+\w[\w\s]{3,30}/gi,
-    /(?:how|what|when|where|why)\s+(?:to|is|are|do)\s+\w[\w\s]{3,30}/gi,
-    /(?:guide|tips?|review|comparison|overview)\s+(?:to|for|of)\s+\w[\w\s]{3,30}/gi,
-    /(?:top|best|complete|ultimate|essential)\s+\w[\w\s]{3,30}/gi,
+    /best\s+(?:places?|things?|time|ways?|options?|tools?|practices?)\s+(?:to|in|for)\s+\w[\w\s]{5,40}/gi,
+    /(?:how|what|when|where|why)\s+(?:to|is|are|do|does|should|can)\s+\w[\w\s]{5,40}/gi,
+    /(?:guide|tips?|review|comparison|overview|introduction|tutorial)\s+(?:to|for|of|on)\s+\w[\w\s]{5,40}/gi,
+    /(?:top|best|complete|ultimate|essential|beginner|advanced)\s+\w[\w\s]{5,40}/gi,
+    /(?:benefits?|advantages?|features?|pricing|cost)\s+(?:of|for)\s+\w[\w\s]{5,40}/gi,
+    /(?:step.by.step|checklist|roadmap|strategy|plan)\s+(?:for|to)\s+\w[\w\s]{5,40}/gi,
   ];
 
   for (const pattern of patterns) {
     const matches = bodyText.match(pattern) || [];
-    for (const match of matches.slice(0, 10)) {
-      const clean = match.toLowerCase().trim();
-      if (clean.length > 5 && clean.length < 60) topics.add(clean);
+    for (const match of matches.slice(0, 8)) {
+      const clean = match.toLowerCase().replace(/\s+/g, " ").trim();
+      if (!isNoise(clean)) topics.add(clean);
     }
   }
 
-  return [...topics].slice(0, 30); // Cap at 30 topics
+  return [...topics].slice(0, 25);
 }
 
 // ─── Crawl competitor pages ──────────────────────────────────────

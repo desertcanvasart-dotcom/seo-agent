@@ -12,6 +12,9 @@ import { audit } from "./api/routes/audit.js";
 import { links } from "./api/routes/links.js";
 import { research } from "./api/routes/research.js";
 import { briefs } from "./api/routes/briefs.js";
+import { gsc } from "./api/routes/gsc.js";
+import { schedule } from "./api/routes/schedule.js";
+import { exportRoutes } from "./api/routes/export.js";
 import { supabase } from "./db/client.js";
 
 const app = new Hono();
@@ -59,6 +62,9 @@ api.route("/sites/:siteId/audit", audit);
 api.route("/sites/:siteId/links", links);
 api.route("/sites/:siteId/research", research);
 api.route("/sites/:siteId/briefs", briefs);
+api.route("/sites/:siteId/gsc", gsc);
+api.route("/sites/:siteId/schedule", schedule);
+api.route("/sites/:siteId/export", exportRoutes);
 
 app.route(env.API_PREFIX, api);
 

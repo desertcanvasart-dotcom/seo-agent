@@ -14,8 +14,19 @@ export default async function SiteAuditPage({ params }: { params: Promise<{ id: 
 
   const { summary, audits } = data;
 
+  const apiUrl = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1");
+  const apiKey = process.env.NEXT_PUBLIC_API_KEY || "";
+  const exportUrl = `${apiUrl}/sites/${siteId}/export/audit.csv`;
+
   return (
     <div>
+      {/* Export button */}
+      <div className="flex justify-end mb-4">
+        <a href={`${exportUrl}?key=${apiKey}`} className="btn btn-outline btn-sm" target="_blank" rel="noopener">
+          Export CSV
+        </a>
+      </div>
+
       {/* Score overview */}
       <div className="grid grid-cols-5 gap-3 mb-6">
         <MiniScore label="Avg SEO" value={summary.avg_seo_score} />
