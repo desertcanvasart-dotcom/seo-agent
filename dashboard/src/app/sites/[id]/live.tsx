@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { deleteSiteAction, runAuditAction, runEmbedAction } from "@/lib/actions";
+import { deleteSiteAction, runAuditAction, runEmbedAction, reCrawlAction } from "@/lib/actions";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -35,6 +35,7 @@ export default function SiteLiveView({ siteId, initialSite, initialCrawl, initia
   const site = initialSite;
   const crawlDone = crawl?.crawl_status === "completed";
   const crawling = crawl?.crawl_status === "crawling";
+  const crawlFailed = crawl?.crawl_status === "failed";
   const hasAudit = audit?.pages_audited > 0;
 
   const poll = useCallback(async () => {
@@ -93,10 +94,18 @@ export default function SiteLiveView({ siteId, initialSite, initialCrawl, initia
                   ? `${crawl.pages_crawled} pages discovered and parsed`
                   : crawling
                     ? `Crawling... ${crawl?.pages_crawled || 0} pages found`
-                    : "Waiting to start"
+                    : crawlFailed
+                      ? "Crawl failed — click Retry to try again"
+                      : "Waiting to start"
               }
-              status={crawlDone ? "done" : crawling ? "running" : "pending"}
+              status={crawlDone ? "done" : crawling ? "running" : crawlFailed ? "failed" : "pending"}
               progress={crawling ? crawl?.pages_crawled : undefined}
+              action={crawlFailed ? (
+                <form action={reCrawlAction}>
+                  <input type="hidden" name="siteId" value={siteId} />
+                  <button className="btn btn-primary btn-sm">Retry</button>
+                </form>
+              ) : undefined}
             />
 
             <PipelineStep
@@ -149,7 +158,7 @@ export default function SiteLiveView({ siteId, initialSite, initialCrawl, initia
       {/* Quick actions */}
       {hasAudit && (
         <div className="grid grid-cols-3 gap-4">
-          <Link href="/audit" className="card hover:shadow-md transition-shadow">
+          <Link href={`/sites/${siteId}/audit`} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-3">
               <div className="w-10 h-10 bg-[var(--green-light)] rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-[var(--green)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -162,7 +171,7 @@ export default function SiteLiveView({ siteId, initialSite, initialCrawl, initia
               </div>
             </div>
           </Link>
-          <Link href="/links" className="card hover:shadow-md transition-shadow">
+          <Link href={`/sites/${siteId}/links`} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-3">
               <div className="w-10 h-10 bg-[var(--accent-light)] rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -175,7 +184,7 @@ export default function SiteLiveView({ siteId, initialSite, initialCrawl, initia
               </div>
             </div>
           </Link>
-          <Link href="/research" className="card hover:shadow-md transition-shadow">
+          <Link href={`/sites/${siteId}/research`} className="card hover:shadow-md transition-shadow">
             <div className="card-body flex items-center gap-3">
               <div className="w-10 h-10 bg-[var(--purple-light)] rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5 text-[var(--purple)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
@@ -202,7 +211,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function PipelineStep({ step, title, description, status, action, progress }: {
-  step: number; title: string; description: string; status: "done" | "running" | "pending"; action?: React.ReactNode; progress?: number;
+  step: number; title: string; description: string; status: "done" | "running" | "pending" | "failed"; action?: React.ReactNode; progress?: number;
 }) {
   return (
     <div>
@@ -210,11 +219,16 @@ function PipelineStep({ step, title, description, status, action, progress }: {
         <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
           status === "done" ? "bg-[var(--green)] text-white" :
           status === "running" ? "bg-[var(--yellow)] text-white" :
+          status === "failed" ? "bg-[var(--red)] text-white" :
           "bg-[#f1f3f4] text-[var(--text-muted)]"
         }`}>
           {status === "done" ? (
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          ) : status === "failed" ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           ) : status === "running" ? (
             <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">

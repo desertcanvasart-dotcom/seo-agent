@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS pages (
   has_json_ld BOOLEAN DEFAULT false,
 
   -- Embedding for similarity search (Phase 3)
-  embedding vector(1024),                -- Cohere embed-english-v3.0 dimension
+  embedding vector(1536),                -- OpenAI text-embedding-3-small dimension
 
   -- Status
   crawl_depth INTEGER DEFAULT 0,         -- how many clicks from homepage

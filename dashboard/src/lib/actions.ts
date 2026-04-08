@@ -61,6 +61,13 @@ export async function deleteSiteAction(formData: FormData) {
   redirect("/");
 }
 
+// ─── Re-crawl a site ─────────────────────────────────────────────
+export async function reCrawlAction(formData: FormData) {
+  const siteId = formData.get("siteId") as string;
+  await startCrawl(siteId);
+  revalidatePath(`/sites/${siteId}`);
+}
+
 // ─── Run full pipeline on a site ─────────────────────────────────
 export async function runAuditAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;

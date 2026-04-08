@@ -11,7 +11,8 @@ interface CrawlOptions {
   maxPages: number;
   respectRobots: boolean;
   delayMs: number;
-  useJsRendering?: boolean; // use Puppeteer for JS-heavy sites
+  useJsRendering?: boolean;
+  autoPipeline?: boolean; // auto-run audit + embed + links after crawl
 }
 
 interface PageData {
@@ -445,6 +446,29 @@ export async function crawlSite(options: CrawlOptions, onProgress?: (p: CrawlPro
     console.log(`   Pages crawled: ${crawledCount}`);
     console.log(`   Failed: ${failedCount}`);
     console.log(`   Queued but skipped: ${queue.length}`);
+
+    // Auto pipeline: crawl → audit → embed → links
+    if (options.autoPipeline && crawledCount > 0) {
+      console.log(`\n🔄 Auto-pipeline starting...`);
+      try {
+        // Dynamic imports to avoid circular deps
+        const { auditSite } = await import("./auditor.js");
+        console.log(`   📋 Running audit...`);
+        await auditSite(siteId);
+
+        const { embedSitePages } = await import("./embedder.js");
+        console.log(`   🧠 Generating embeddings...`);
+        await embedSitePages(siteId);
+
+        const { generateLinkSuggestions } = await import("./linker.js");
+        console.log(`   🔗 Generating link suggestions...`);
+        await generateLinkSuggestions(siteId);
+
+        console.log(`   ✅ Auto-pipeline complete!`);
+      } catch (err) {
+        console.error(`   ❌ Auto-pipeline error:`, (err as Error).message);
+      }
+    }
   } finally {
     // Always close the browser
     if (browser) {

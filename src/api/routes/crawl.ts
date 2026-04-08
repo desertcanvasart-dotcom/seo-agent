@@ -23,7 +23,14 @@ crawl.post("/", async (c) => {
   }
 
   if (site.crawl_status === "crawling") {
-    return c.json({ error: "Crawl already in progress" }, 409);
+    // If crawl has been "crawling" for over 30 minutes, it's stuck — allow retry
+    const startedAt = site.crawl_started_at ? new Date(site.crawl_started_at).getTime() : 0;
+    const stuckMinutes = (Date.now() - startedAt) / 60000;
+    if (stuckMinutes < 30) {
+      return c.json({ error: "Crawl already in progress" }, 409);
+    }
+    // Mark as failed so we can restart
+    await supabase.from("sites").update({ crawl_status: "failed" }).eq("id", siteId);
   }
 
   // Get settings from request body or use site defaults
@@ -41,6 +48,7 @@ crawl.post("/", async (c) => {
     respectRobots: body.respect_robots ?? true,
     delayMs,
     useJsRendering: body.use_js_rendering ?? true,
+    autoPipeline: body.auto_pipeline ?? true,
   }).catch(async (err) => {
     console.error(`Crawl failed for ${site.domain}:`, err);
     await supabase
