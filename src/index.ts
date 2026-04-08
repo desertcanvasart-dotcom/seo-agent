@@ -15,6 +15,7 @@ import { briefs } from "./api/routes/briefs.js";
 import { gsc } from "./api/routes/gsc.js";
 import { schedule } from "./api/routes/schedule.js";
 import { exportRoutes } from "./api/routes/export.js";
+import { embed } from "./api/routes/embed.js";
 import { supabase } from "./db/client.js";
 
 const app = new Hono();
@@ -41,6 +42,8 @@ app.post("/delete-site/:siteId", authMiddleware, async (c) => {
 
 // Public routes (no auth needed)
 app.route("/", health);
+app.route("/embed", embed);       // GET /embed/snippet.js
+app.route("/v1", embed);          // POST /v1/sites/:siteId/beacon
 
 // Protected API routes
 const api = new Hono<{ Variables: { apiKeyId: string; apiKeyName: string; apiKeyScopes: string[] } }>();
