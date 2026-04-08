@@ -12,6 +12,7 @@ import { audit } from "./api/routes/audit.js";
 import { links } from "./api/routes/links.js";
 import { research } from "./api/routes/research.js";
 import { briefs } from "./api/routes/briefs.js";
+import { supabase } from "./db/client.js";
 
 const app = new Hono();
 
@@ -24,13 +25,27 @@ app.get("/debug", (c) => {
   return c.json({ routes: "working", prefix: env.API_PREFIX, port: env.PORT });
 });
 
+// Delete site
+app.post("/delete-site/:siteId", authMiddleware, async (c) => {
+  const apiKeyId = c.get("apiKeyId");
+  const siteId = c.req.param("siteId")!;
+  const { data: site } = await supabase.from("sites").select("id, domain").eq("id", siteId).eq("api_key_id", apiKeyId).single();
+  if (!site) return c.json({ error: "Site not found" }, 404);
+  const { error } = await supabase.from("sites").delete().eq("id", siteId);
+  if (error) return c.json({ error: error.message }, 500);
+  return c.json({ message: `Deleted ${site.domain}` });
+});
+
 // Public routes (no auth needed)
 app.route("/", health);
 
 // Protected API routes
-const api = new Hono();
+const api = new Hono<{ Variables: { apiKeyId: string; apiKeyName: string; apiKeyScopes: string[] } }>();
 api.use("*", authMiddleware);
+
 api.route("/sites", sites);
+
+
 // Pages are nested under sites: /v1/sites/:siteId/pages
 api.get("/sites/:siteId/pages", async (c) => {
   // Re-route to pages handler with siteId
@@ -46,6 +61,7 @@ api.route("/sites/:siteId/research", research);
 api.route("/sites/:siteId/briefs", briefs);
 
 app.route(env.API_PREFIX, api);
+
 
 // 404 fallback
 app.notFound((c) => {

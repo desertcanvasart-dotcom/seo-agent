@@ -83,7 +83,18 @@ export async function createSite(domain: string, name?: string) {
 }
 
 export async function deleteSite(siteId: string) {
-  return apiFetch(`/sites/${siteId}`, { method: "DELETE" });
+  // Delete is outside /v1 prefix due to Hono routing constraints
+  const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1").replace("/v1", "");
+  const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
+  const res = await fetch(`${API_BASE}/delete-site/${siteId}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || "Delete failed");
+  }
+  return res.json();
 }
 
 export async function startEmbed(siteId: string) {
