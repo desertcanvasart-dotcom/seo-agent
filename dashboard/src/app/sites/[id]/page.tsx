@@ -1,5 +1,5 @@
 import { getSite, getCrawlStatus, getAudit, getSuggestions, getBriefs } from "@/lib/api";
-import { runAuditAction, runEmbedAction } from "@/lib/actions";
+import { runAuditAction, runEmbedAction, deleteSiteAction } from "@/lib/actions";
 import Link from "next/link";
 
 export default async function SiteDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -36,7 +36,15 @@ export default async function SiteDetailPage({ params }: { params: Promise<{ id:
             <p className="text-sm text-[var(--text-secondary)]">{crawl?.pages_crawled || 0} pages crawled</p>
           </div>
         </div>
-        <StatusBadge status={crawl?.crawl_status || "pending"} />
+        <div className="flex items-center gap-3">
+          <StatusBadge status={crawl?.crawl_status || "pending"} />
+          <form action={deleteSiteAction}>
+            <input type="hidden" name="siteId" value={siteId} />
+            <button className="btn btn-outline btn-sm text-[var(--red)] border-[var(--red)] hover:bg-[var(--red-light)]">
+              Delete
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Pipeline */}

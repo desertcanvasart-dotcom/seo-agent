@@ -92,4 +92,34 @@ sites.get("/:id", async (c) => {
   return c.json({ site: data });
 });
 
+// DELETE /sites/:id — Delete a site and all its data
+sites.delete("/:id", async (c) => {
+  const apiKeyId = c.get("apiKeyId");
+  const siteId = c.req.param("id")!;
+
+  // Verify ownership
+  const { data: site } = await supabase
+    .from("sites")
+    .select("id, domain")
+    .eq("id", siteId)
+    .eq("api_key_id", apiKeyId)
+    .single();
+
+  if (!site) {
+    return c.json({ error: "Site not found" }, 404);
+  }
+
+  // Delete site — CASCADE will remove pages, audits, suggestions, etc.
+  const { error } = await supabase
+    .from("sites")
+    .delete()
+    .eq("id", siteId);
+
+  if (error) {
+    return c.json({ error: error.message }, 500);
+  }
+
+  return c.json({ message: `Site ${site.domain} deleted`, site_id: siteId });
+});
+
 export { sites };

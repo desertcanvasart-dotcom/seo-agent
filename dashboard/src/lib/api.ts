@@ -82,6 +82,10 @@ export async function createSite(domain: string, name?: string) {
   });
 }
 
+export async function deleteSite(siteId: string) {
+  return apiFetch(`/sites/${siteId}`, { method: "DELETE" });
+}
+
 export async function startEmbed(siteId: string) {
   return apiFetch(`/sites/${siteId}/links/embed`, { method: "POST" });
 }

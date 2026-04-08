@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createSite,
+  deleteSite,
   getSites,
   startCrawl,
   startAudit,
@@ -50,6 +51,14 @@ export async function addSiteAction(_prevState: any, formData: FormData) {
   }
 
   redirect(`/sites/${siteId}`);
+}
+
+// ─── Delete a site ───────────────────────────────────────────────
+export async function deleteSiteAction(formData: FormData) {
+  const siteId = formData.get("siteId") as string;
+  await deleteSite(siteId);
+  revalidatePath("/");
+  redirect("/");
 }
 
 // ─── Run full pipeline on a site ─────────────────────────────────
