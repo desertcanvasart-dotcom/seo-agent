@@ -1,162 +1,77 @@
-import { getSites, getAudit, getSuggestions, getBriefs, getCrawlStatus } from "@/lib/api";
+import { getSites } from "@/lib/api";
 import Link from "next/link";
 
-const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
+export default async function HomePage() {
+  const data = await getSites().catch(() => null);
+  const sites = data?.sites || [];
 
-function Score({ value, label }: { value: number; label: string }) {
-  const color = value >= 70 ? "text-[#22c55e]" : value >= 40 ? "text-[#eab308]" : "text-[#ef4444]";
-  const bg = value >= 70 ? "bg-[#22c55e]" : value >= 40 ? "bg-[#eab308]" : "bg-[#ef4444]";
   return (
-    <div className="border rounded-lg p-5">
-      <p className="text-xs text-[#888] uppercase tracking-wider mb-2">{label}</p>
-      <p className={`text-5xl font-light tabular-nums ${color}`}>{value}</p>
-      <div className="mt-3 w-full bg-[#f5f5f5] rounded-full h-1">
-        <div className={`h-1 rounded-full ${bg}`} style={{ width: `${value}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function Stat({ value, label, href }: { value: string | number; label: string; href?: string }) {
-  const inner = (
-    <div className={`border rounded-lg p-5 ${href ? "hover:border-[#22c55e] transition-colors cursor-pointer" : ""}`}>
-      <p className="text-xs text-[#888] uppercase tracking-wider mb-1">{label}</p>
-      <p className="text-3xl font-light tabular-nums">{value}</p>
-    </div>
-  );
-  return href ? <Link href={href}>{inner}</Link> : inner;
-}
-
-export default async function OverviewPage() {
-  // Try to load data for the default site
-  let audit, suggestions, briefsData, crawl, sitesData;
-
-  try {
-    [sitesData, audit, suggestions, briefsData, crawl] = await Promise.all([
-      getSites().catch(() => null),
-      SITE_ID ? getAudit(SITE_ID).catch(() => null) : null,
-      SITE_ID ? getSuggestions(SITE_ID).catch(() => null) : null,
-      SITE_ID ? getBriefs(SITE_ID).catch(() => null) : null,
-      SITE_ID ? getCrawlStatus(SITE_ID).catch(() => null) : null,
-    ]);
-  } catch {
-    return (
-      <div className="border border-[#ef4444] rounded-lg p-6 text-sm">
-        <p className="font-medium text-[#ef4444]">Cannot connect to API</p>
-        <p className="text-[#888] mt-1">Make sure the server is running.</p>
-      </div>
-    );
-  }
-
-  const sites = sitesData?.sites || [];
-  const s = audit?.summary || { pages_audited: 0, avg_seo_score: 0, avg_geo_score: 0, avg_total_score: 0, critical_issues: 0, high_issues: 0 };
-
-  // If no sites yet, show add site prompt
-  if (sites.length === 0) {
-    return (
-      <div className="text-center mt-20">
-        <h1 className="text-2xl font-semibold tracking-tight mb-2">No sites yet</h1>
-        <p className="text-[#888] mb-6">Add your first website to get started.</p>
-        <Link href="/new" className="px-6 py-3 bg-[#111] text-white text-sm rounded-lg hover:bg-[#333] transition-colors">
-          + Add Site
+    <div>
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-xl font-semibold">Projects</h1>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            {sites.length} website{sites.length !== 1 ? "s" : ""} being monitored
+          </p>
+        </div>
+        <Link href="/new" className="btn btn-primary">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+          New Project
         </Link>
       </div>
-    );
-  }
 
-  // If we have a site but no audit data, show the sites list
-  if (!audit || s.pages_audited === 0) {
-    return (
-      <div>
-        <div className="mb-8">
-          <h1 className="text-2xl font-semibold tracking-tight">Your Sites</h1>
+      {sites.length === 0 ? (
+        <div className="card">
+          <div className="card-body text-center py-16">
+            <div className="w-16 h-16 bg-[var(--accent-light)] rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0112 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 013 12c0-1.605.42-3.113 1.157-4.418" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold mb-1">No projects yet</h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-6">Add your first website to start analyzing</p>
+            <Link href="/new" className="btn btn-primary">Add Your First Website</Link>
+          </div>
         </div>
-        <div className="space-y-3">
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {sites.map((site: any) => (
-            <Link key={site.id} href={`/sites/${site.id}`} className="block">
-              <div className="border rounded-lg p-5 hover:border-[#22c55e] transition-colors">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">{site.domain}</p>
-                    <p className="text-xs text-[#888] mt-0.5">{site.page_count} pages &middot; {site.crawl_status}</p>
+            <Link key={site.id} href={`/sites/${site.id}`} className="card hover:shadow-md transition-shadow">
+              <div className="card-body">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-[var(--accent-light)] rounded-lg flex items-center justify-center">
+                      <span className="text-[var(--accent)] font-bold text-sm">
+                        {site.domain.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm">{site.domain}</h3>
+                      <p className="text-xs text-[var(--text-muted)]">{site.name}</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-[#22c55e]">View &rarr;</span>
+                  <StatusBadge status={site.crawl_status} />
+                </div>
+
+                <div className="flex gap-4 text-xs text-[var(--text-secondary)]">
+                  <span>{site.page_count} pages</span>
+                  <span>Added {new Date(site.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </Link>
           ))}
         </div>
-      </div>
-    );
-  }
-
-  // Full dashboard with data
-  return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-[#888] mt-1">
-          {crawl?.domain || "—"} &middot; {crawl?.pages_crawled || 0} pages &middot; Last crawl {crawl?.crawl_completed_at ? new Date(crawl.crawl_completed_at).toLocaleDateString() : "never"}
-        </p>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <Score value={s.avg_seo_score} label="SEO Score" />
-        <Score value={s.avg_geo_score} label="GEO Score" />
-        <Score value={s.avg_total_score} label="Overall" />
-      </div>
-
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <Stat value={s.pages_audited} label="Pages Audited" href="/audit" />
-        <Stat value={s.critical_issues} label="Critical Issues" href="/audit" />
-        <Stat value={suggestions?.total || 0} label="Link Suggestions" href="/links" />
-        <Stat value={briefsData?.briefs?.length || 0} label="Content Briefs" href="/briefs" />
-      </div>
-
-      {audit?.audits && audit.audits.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-medium uppercase tracking-wider text-[#888]">Pages needing attention</h2>
-            <Link href="/audit" className="text-xs text-[#22c55e] hover:underline">View all &rarr;</Link>
-          </div>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-[#fafafa]">
-                  <th className="text-left p-3 font-medium text-[#888]">Page</th>
-                  <th className="text-right p-3 font-medium text-[#888] w-16">SEO</th>
-                  <th className="text-right p-3 font-medium text-[#888] w-16">GEO</th>
-                  <th className="text-right p-3 font-medium text-[#888] w-20">Total</th>
-                  <th className="text-left p-3 font-medium text-[#888]">Top Issue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {audit.audits.slice(0, 10).map((a: any) => {
-                  const topRec = (a.recommendations as any[])?.[0];
-                  return (
-                    <tr key={a.id} className="border-b last:border-0 hover:bg-[#fafafa]">
-                      <td className="p-3">
-                        <p className="font-medium truncate max-w-xs">{a.pages?.title || "Untitled"}</p>
-                        <p className="text-xs text-[#aaa] font-mono">{a.pages?.path}</p>
-                      </td>
-                      <td className="p-3 text-right tabular-nums">
-                        <span className={a.seo_score >= 70 ? "text-[#22c55e]" : a.seo_score >= 40 ? "text-[#eab308]" : "text-[#ef4444]"}>{a.seo_score}</span>
-                      </td>
-                      <td className="p-3 text-right tabular-nums">
-                        <span className={a.geo_score >= 70 ? "text-[#22c55e]" : a.geo_score >= 40 ? "text-[#eab308]" : "text-[#ef4444]"}>{a.geo_score}</span>
-                      </td>
-                      <td className="p-3 text-right tabular-nums font-medium">{a.total_score}</td>
-                      <td className="p-3">
-                        {topRec && <span className="text-xs text-[#888]">{topRec.message}</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
       )}
     </div>
   );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  if (status === "completed") return <span className="badge badge-green">Crawled</span>;
+  if (status === "crawling") return <span className="badge badge-yellow">Crawling...</span>;
+  if (status === "failed") return <span className="badge badge-red">Failed</span>;
+  return <span className="badge badge-gray">Pending</span>;
 }

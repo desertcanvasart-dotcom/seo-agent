@@ -19,12 +19,20 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { href: "/", label: "Overview" },
-  { href: "/audit", label: "Audit" },
-  { href: "/links", label: "Links" },
-  { href: "/research", label: "Research" },
-  { href: "/briefs", label: "Briefs" },
+  { href: "/", label: "Projects", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1" },
+  { href: "/audit", label: "Audit", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { href: "/links", label: "Links", icon: "M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" },
+  { href: "/research", label: "Research", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
+  { href: "/briefs", label: "Briefs", icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
 ];
+
+function NavIcon({ d }: { d: string }) {
+  return (
+    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+    </svg>
+  );
+}
 
 export default function RootLayout({
   children,
@@ -36,47 +44,48 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        {/* Top nav */}
-        <header className="border-b sticky top-0 bg-white z-50">
-          <div className="max-w-7xl mx-auto px-6 flex items-center justify-between h-14">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="font-semibold text-base tracking-tight">
-                SEO Agent
-              </Link>
-              <nav className="flex items-center gap-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="px-3 py-1.5 rounded-md text-sm text-[#888] hover:text-[#111] hover:bg-[#f5f5f5] transition-colors"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-            <Link
-              href="/new"
-              className="px-3 py-1.5 rounded-md text-sm bg-[#111] text-white hover:bg-[#333] transition-colors"
-            >
-              + Add Site
+      <body className="min-h-full flex">
+        {/* Sidebar */}
+        <aside className="w-[220px] bg-[#1a1a2e] text-white flex flex-col fixed h-full z-50">
+          <div className="p-5 pb-4">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-[var(--accent)] rounded-lg flex items-center justify-center text-white font-bold text-sm">S</div>
+              <div>
+                <div className="font-semibold text-sm leading-none">SEO Agent</div>
+                <div className="text-[10px] text-[#8b8fa3] mt-0.5">SEO & GEO Platform</div>
+              </div>
             </Link>
           </div>
-        </header>
 
-        {/* Content */}
-        <main className="flex-1 max-w-7xl w-full mx-auto px-6 py-8">
-          {children}
-        </main>
+          <nav className="flex-1 px-3 space-y-0.5">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[13px] text-[#8b8fa3] hover:bg-[#16213e] hover:text-white transition-colors"
+              >
+                <NavIcon d={item.icon} />
+                {item.label}
+              </Link>
+            ))}
+          </nav>
 
-        {/* Footer */}
-        <footer className="border-t py-4">
-          <div className="max-w-7xl mx-auto px-6 flex items-center justify-between text-xs text-[#aaa]">
-            <span>SEO/GEO Agent v0.1</span>
-            <span>Multi-site SEO Platform</span>
+          <div className="p-4 mx-3 mb-3 bg-[#16213e] rounded-lg">
+            <Link href="/new" className="flex items-center justify-center gap-2 w-full py-2 bg-[var(--accent)] text-white text-xs font-medium rounded-lg hover:bg-[#1557b0] transition-colors">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New Project
+            </Link>
           </div>
-        </footer>
+        </aside>
+
+        {/* Main */}
+        <main className="flex-1 ml-[220px] min-h-screen">
+          <div className="max-w-[1200px] mx-auto px-8 py-6">
+            {children}
+          </div>
+        </main>
       </body>
     </html>
   );
