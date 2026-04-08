@@ -269,8 +269,8 @@ function checkSchemaCompleteness(
   const recommended: Record<string, string[]> = {
     homepage: ["Organization", "WebSite", "SearchAction"],
     blog: ["Article", "BlogPosting", "BreadcrumbList"],
-    tour: ["TourPackage", "Product", "FAQPage", "BreadcrumbList"],
-    destination: ["Place", "TouristAttraction", "BreadcrumbList"],
+    product: ["Product", "Offer", "FAQPage", "BreadcrumbList"],
+    service: ["Service", "Offer", "BreadcrumbList"],
     page: ["WebPage", "BreadcrumbList"],
     info: ["WebPage", "FAQPage"],
     category: ["CollectionPage", "BreadcrumbList"],

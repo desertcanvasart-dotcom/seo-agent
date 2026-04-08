@@ -8,14 +8,14 @@ async function test() {
   const { data: p1 } = await supabase
     .from("pages")
     .select("id, path, embedding")
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
-    .eq("path", "/egypt-travel-faqs")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
+    .eq("path", "/sample-page")
     .single();
 
   const { data: p2 } = await supabase
     .from("pages")
     .select("id, path, embedding")
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
     .eq("path", "/")
     .single();
 
@@ -33,7 +33,7 @@ async function test() {
     console.log("\nTesting match_pages with homepage embedding...");
     const { data, error } = await supabase.rpc("match_pages", {
       query_embedding: p2.embedding,
-      match_site_id: "dd93832b-3f40-412f-88ca-b093c81359d4",
+      match_site_id: process.env.TEST_SITE_ID || "",
       match_threshold: 0.1,  // Very low threshold
       match_count: 5,
     });

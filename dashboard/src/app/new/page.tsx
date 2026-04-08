@@ -1,6 +1,11 @@
+"use client";
+
+import { useActionState } from "react";
 import { addSiteAction } from "@/lib/actions";
 
 export default function NewSitePage() {
+  const [state, formAction, pending] = useActionState(addSiteAction, null);
+
   return (
     <div className="max-w-lg mx-auto mt-12">
       <h1 className="text-2xl font-semibold tracking-tight mb-2">Add a Website</h1>
@@ -8,7 +13,13 @@ export default function NewSitePage() {
         Paste your website URL. We&apos;ll crawl every page, audit SEO &amp; GEO health, find internal linking opportunities, and generate content briefs.
       </p>
 
-      <form action={addSiteAction} className="space-y-4">
+      {state?.error && (
+        <div className="border border-[#ef4444] rounded-lg p-4 mb-4 text-sm text-[#ef4444]">
+          {state.error}
+        </div>
+      )}
+
+      <form action={formAction} className="space-y-4">
         <div>
           <label htmlFor="url" className="block text-sm font-medium mb-1.5">
             Website URL
@@ -19,7 +30,8 @@ export default function NewSitePage() {
             name="url"
             placeholder="https://example.com"
             required
-            className="w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:border-[#111] transition-colors"
+            disabled={pending}
+            className="w-full px-4 py-3 border rounded-lg text-sm focus:outline-none focus:border-[#111] transition-colors disabled:opacity-50"
           />
           <p className="text-xs text-[#aaa] mt-1.5">
             Enter the homepage URL. We&apos;ll discover all pages automatically.
@@ -28,9 +40,10 @@ export default function NewSitePage() {
 
         <button
           type="submit"
-          className="w-full py-3 bg-[#111] text-white text-sm font-medium rounded-lg hover:bg-[#333] transition-colors"
+          disabled={pending}
+          className="w-full py-3 bg-[#111] text-white text-sm font-medium rounded-lg hover:bg-[#333] transition-colors disabled:opacity-50"
         >
-          Start Analysis
+          {pending ? "Starting..." : "Start Analysis"}
         </button>
       </form>
 

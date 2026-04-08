@@ -38,11 +38,11 @@ export default async function LinksPage() {
             {data.suggestions.map((s: any) => (
               <tr key={s.id} className="border-b last:border-0 hover:bg-[#fafafa]">
                 <td className="p-3">
-                  <p className="font-medium truncate max-w-[200px]">{s.source_page?.title?.replace(/ - Travel2Egypt$/i, "")}</p>
+                  <p className="font-medium truncate max-w-[200px]">{s.source_page?.title}</p>
                   <p className="text-xs text-[#aaa] font-mono">{s.source_page?.path}</p>
                 </td>
                 <td className="p-3">
-                  <p className="font-medium truncate max-w-[200px]">{s.target_page?.title?.replace(/ - Travel2Egypt$/i, "")}</p>
+                  <p className="font-medium truncate max-w-[200px]">{s.target_page?.title}</p>
                   <p className="text-xs text-[#aaa] font-mono">{s.target_page?.path}</p>
                 </td>
                 <td className="p-3">

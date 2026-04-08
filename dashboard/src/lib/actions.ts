@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   createSite,
+  getSites,
   startCrawl,
   startAudit,
   startEmbed,
@@ -16,20 +17,37 @@ import {
 } from "./api";
 
 // ─── Add a new site and start crawling ───────────────────────────
-export async function addSiteAction(formData: FormData) {
+export async function addSiteAction(_prevState: any, formData: FormData) {
   const url = formData.get("url") as string;
-  if (!url) throw new Error("URL is required");
+  if (!url) return { error: "URL is required" };
 
   // Clean the URL to extract domain
   let domain = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
-  // Remove path if any
   domain = domain.split("/")[0];
 
-  const result = await createSite(domain);
-  const siteId = result.site.id;
+  let siteId: string;
+
+  try {
+    const result = await createSite(domain);
+    siteId = result.site.id;
+  } catch (err: any) {
+    // If site already exists, find it and redirect to it
+    if (err.message?.includes("already registered")) {
+      const sitesData = await getSites();
+      const existing = sitesData.sites.find((s: any) => s.domain === domain);
+      if (existing) {
+        redirect(`/sites/${existing.id}`);
+      }
+    }
+    return { error: err.message || "Failed to create site" };
+  }
 
   // Auto-start crawl
-  await startCrawl(siteId);
+  try {
+    await startCrawl(siteId);
+  } catch {
+    // Crawl might fail to start, still redirect to site page
+  }
 
   redirect(`/sites/${siteId}`);
 }

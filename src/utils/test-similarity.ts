@@ -8,7 +8,7 @@ async function test() {
   const { data: page, error: pageErr } = await supabase
     .from("pages")
     .select("id, path, title, embedding")
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
     .not("embedding", "is", null)
     .eq("path", "/")
     .single();
@@ -24,7 +24,7 @@ async function test() {
   // Test the RPC function
   const { data, error } = await supabase.rpc("match_pages", {
     query_embedding: page.embedding,
-    match_site_id: "dd93832b-3f40-412f-88ca-b093c81359d4",
+    match_site_id: process.env.TEST_SITE_ID || "",
     match_threshold: 0.25,
     match_count: 10,
   });

@@ -74,7 +74,7 @@ export default function RootLayout({
         <footer className="border-t py-4">
           <div className="max-w-7xl mx-auto px-6 flex items-center justify-between text-xs text-[#aaa]">
             <span>SEO/GEO Agent v0.1</span>
-            <span>travel2egypt.org</span>
+            <span>Multi-site SEO Platform</span>
           </div>
         </footer>
       </body>

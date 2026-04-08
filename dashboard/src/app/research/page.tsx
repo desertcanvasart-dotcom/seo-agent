@@ -42,7 +42,7 @@ export default async function ResearchPage() {
             <input
               type="text"
               name="keyword"
-              placeholder="e.g. egypt tours"
+              placeholder="e.g. your target keyword"
               className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#111]"
             />
           </div>

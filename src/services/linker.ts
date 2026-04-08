@@ -16,22 +16,21 @@ interface LinkSuggestion {
 // ─── Content type link relevance matrix ──────────────────────────
 // Some content type pairs make better links than others
 const LINK_RELEVANCE: Record<string, Record<string, number>> = {
-  homepage: { tour: 1.2, destination: 1.2, blog: 1.0, page: 0.8, info: 0.6, category: 1.0 },
-  blog: { tour: 1.3, destination: 1.2, blog: 1.0, page: 0.9, info: 0.7, category: 0.8 },
-  tour: { tour: 0.9, destination: 1.3, blog: 1.1, page: 0.8, info: 0.6, category: 0.7 },
-  destination: { tour: 1.4, destination: 1.0, blog: 1.1, page: 0.9, info: 0.7, category: 0.8 },
-  page: { tour: 1.2, destination: 1.1, blog: 1.0, page: 0.8, info: 0.7, category: 0.7 },
-  info: { tour: 0.8, destination: 0.7, blog: 0.6, page: 0.5, info: 0.4, category: 0.5 },
-  category: { tour: 1.1, destination: 1.0, blog: 0.9, page: 0.7, info: 0.5, category: 0.6 },
-  legal: { tour: 0.2, destination: 0.2, blog: 0.2, page: 0.2, info: 0.3, category: 0.2 },
+  homepage: { product: 1.2, service: 1.2, blog: 1.0, page: 0.8, info: 0.6, category: 1.0 },
+  blog: { product: 1.3, service: 1.2, blog: 1.0, page: 0.9, info: 0.7, category: 0.8 },
+  product: { product: 0.9, service: 1.3, blog: 1.1, page: 0.8, info: 0.6, category: 0.7 },
+  service: { product: 1.4, service: 1.0, blog: 1.1, page: 0.9, info: 0.7, category: 0.8 },
+  page: { product: 1.2, service: 1.1, blog: 1.0, page: 0.8, info: 0.7, category: 0.7 },
+  info: { product: 0.8, service: 0.7, blog: 0.6, page: 0.5, info: 0.4, category: 0.5 },
+  category: { product: 1.1, service: 1.0, blog: 0.9, page: 0.7, info: 0.5, category: 0.6 },
+  legal: { product: 0.2, service: 0.2, blog: 0.2, page: 0.2, info: 0.3, category: 0.2 },
 };
 
 // ─── Generate anchor text from target page ───────────────────────
 function generateAnchorText(targetTitle: string, targetPath: string, targetContentType: string): string {
   // Clean up the title — remove site name suffix
   let anchor = targetTitle
-    .replace(/\s*[-|–]\s*Travel2Egypt$/i, "")
-    .replace(/\s*[-|–]\s*[^-|–]*$/i, "") // Generic site name removal
+    .replace(/\s*[-|–]\s*[^-|–]*$/i, "") // Remove site name suffix
     .trim();
 
   // If title is too long, shorten it

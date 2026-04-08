@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function test() {
-  const siteId = "dd93832b-3f40-412f-88ca-b093c81359d4";
+  const siteId = process.env.TEST_SITE_ID || "";
 
   // Pick a blog post page (less likely to link everywhere)
   const { data: page } = await supabase

@@ -11,7 +11,7 @@ async function test() {
 
   const res = await openai.embeddings.create({
     model: "text-embedding-3-small",
-    input: "Egypt tours and travel packages for the best vacation",
+    input: "Sample text for testing embedding generation",
   });
 
   const embedding = res.data[0].embedding;
@@ -22,7 +22,7 @@ async function test() {
   const { data: page } = await supabase
     .from("pages")
     .select("id, path")
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
     .limit(1)
     .single();
 

@@ -129,13 +129,12 @@ function extractTopics(headings: string[], bodyText: string, title: string): str
     .trim();
   if (titleClean.length > 3) topics.add(titleClean);
 
-  // Common travel topic patterns from body
+  // Common topic patterns from body (generic, works for any industry)
   const patterns = [
-    /best\s+(?:places?|things?|time|hotels?|tours?)\s+(?:to|in|for)\s+\w[\w\s]{3,30}/gi,
+    /best\s+(?:places?|things?|time|ways?|options?|tools?)\s+(?:to|in|for)\s+\w[\w\s]{3,30}/gi,
     /(?:how|what|when|where|why)\s+(?:to|is|are|do)\s+\w[\w\s]{3,30}/gi,
-    /(?:guide|tips?|itinerary|review)\s+(?:to|for|of)\s+\w[\w\s]{3,30}/gi,
-    /\b(?:cairo|luxor|aswan|hurghada|sharm|alexandria|giza|dahab|siwa)\s+\w[\w\s]{2,20}/gi,
-    /\b(?:pyramid|temple|tomb|museum|nile|cruise|safari|desert)\s+\w[\w\s]{2,20}/gi,
+    /(?:guide|tips?|review|comparison|overview)\s+(?:to|for|of)\s+\w[\w\s]{3,30}/gi,
+    /(?:top|best|complete|ultimate|essential)\s+\w[\w\s]{3,30}/gi,
   ];
 
   for (const pattern of patterns) {

@@ -25,7 +25,7 @@ export default async function BriefsPage() {
           <input
             type="text"
             name="keyword"
-            placeholder="Enter target keyword (e.g. best time to visit egypt)"
+            placeholder="Enter target keyword (e.g. best project management tools)"
             required
             className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#111]"
           />

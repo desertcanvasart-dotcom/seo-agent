@@ -4,7 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function run() {
-  const siteId = "dd93832b-3f40-412f-88ca-b093c81359d4";
+  const siteId = process.env.TEST_SITE_ID || "";
 
   const { data: pages } = await supabase
     .from("pages")
@@ -60,7 +60,7 @@ async function run() {
         site_id: siteId,
         source_page_id: page.id,
         target_page_id: s.id,
-        anchor_text: (s.title || s.path).replace(/ - Travel2Egypt$/i, ""),
+        anchor_text: s.title || s.path,
         similarity_score: similarity,
         relevance_score: similarity,
         confidence,

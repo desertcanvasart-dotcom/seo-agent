@@ -195,7 +195,7 @@ GEO OPTIMIZATION REQUIREMENTS:
 
 SCHEMA: This article should support ${brief.recommended_schema} structured data.
 
-Write the full article in markdown format. Be factual, specific, and authoritative. Write as a travel expert with firsthand Egypt experience.`;
+Write the full article in markdown format. Be factual, specific, and authoritative. Write as a knowledgeable expert with deep subject-matter expertise.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
@@ -228,23 +228,20 @@ Write the full article in markdown format. Be factual, specific, and authoritati
 function analyzeKeyword(keyword: string): { type: string; schemaType: string; intent: string } {
   const kw = keyword.toLowerCase();
 
-  if (/tour|trip|package|itinerary|day\s+\d|holiday/i.test(kw)) {
-    return { type: "tour", schemaType: "TourPackage", intent: "transactional" };
+  if (/buy|pricing|purchase|order|subscribe|plan/i.test(kw)) {
+    return { type: "product", schemaType: "Product", intent: "transactional" };
   }
-  if (/guide|travel guide|tips|advice|know before/i.test(kw)) {
+  if (/guide|tips|advice|know before|tutorial|walkthrough/i.test(kw)) {
     return { type: "guide", schemaType: "Article", intent: "informational" };
   }
-  if (/best|top\s+\d|review|compare/i.test(kw)) {
+  if (/best|top\s+\d|review|compare|comparison|vs\b/i.test(kw)) {
     return { type: "listicle", schemaType: "Article", intent: "informational" };
   }
   if (/faq|question|how to|what is|when to/i.test(kw)) {
     return { type: "faq", schemaType: "FAQPage", intent: "informational" };
   }
-  if (/hotel|resort|lodge|stay|accommodation/i.test(kw)) {
-    return { type: "hotel", schemaType: "Hotel", intent: "transactional" };
-  }
-  if (/cairo|luxor|aswan|hurghada|sharm|alexandria|giza|dahab|siwa/i.test(kw)) {
-    return { type: "destination", schemaType: "TouristAttraction", intent: "informational" };
+  if (/service|solution|platform|agency|consulting/i.test(kw)) {
+    return { type: "service", schemaType: "Service", intent: "transactional" };
   }
   return { type: "article", schemaType: "Article", intent: "informational" };
 }
@@ -269,7 +266,7 @@ function buildOutline(
   });
 
   // Type-specific sections
-  if (meta.type === "tour" || meta.type === "hotel") {
+  if (meta.type === "product" || meta.type === "service") {
     sections.push(
       {
         heading: "Overview & Highlights",
@@ -277,8 +274,8 @@ function buildOutline(
         target_word_count: 200,
       },
       {
-        heading: "Detailed Itinerary & What to Expect",
-        talking_points: ["Day-by-day breakdown", "Key stops and activities", "Duration and timing"],
+        heading: "Detailed Breakdown & What to Expect",
+        talking_points: ["Step-by-step walkthrough", "Key components and features", "Timeline and process"],
         target_word_count: 400,
       },
       {
@@ -288,35 +285,30 @@ function buildOutline(
       },
       {
         heading: "Practical Information",
-        talking_points: ["How to book", "What to bring", "Best time to go", "Accessibility"],
+        talking_points: ["How to get started", "Requirements and prerequisites", "Support and resources"],
         target_word_count: 250,
       }
     );
-  } else if (meta.type === "guide" || meta.type === "destination") {
+  } else if (meta.type === "guide") {
     sections.push(
       {
-        heading: `Why Visit ${capitalize(keyword)}`,
-        talking_points: ["Historical significance", "Unique attractions", "Cultural experiences"],
+        heading: `Why ${capitalize(keyword)} Matters`,
+        talking_points: ["Background and context", "Key benefits", "Who should care"],
         target_word_count: 250,
       },
       {
-        heading: "Top Things to See & Do",
-        talking_points: ["Must-see attractions", "Hidden gems", "Activities and experiences"],
+        heading: "Key Aspects to Understand",
+        talking_points: ["Core concepts", "Important details", "Common approaches"],
         target_word_count: 400,
       },
       {
-        heading: "Getting There & Getting Around",
-        talking_points: ["Transportation options", "Distance from major cities", "Local transport"],
-        target_word_count: 200,
+        heading: "Step-by-Step Guide",
+        talking_points: ["Getting started", "Best practices", "Common pitfalls to avoid"],
+        target_word_count: 300,
       },
       {
-        heading: "Best Time to Visit",
-        talking_points: ["Weather by season", "Peak vs off-peak", "Special events"],
-        target_word_count: 200,
-      },
-      {
-        heading: "Where to Stay",
-        talking_points: ["Hotel recommendations by budget", "Best areas to stay", "Booking tips"],
+        heading: "Tips & Recommendations",
+        talking_points: ["Expert advice", "Resources and tools", "Next steps"],
         target_word_count: 200,
       }
     );
@@ -365,17 +357,16 @@ function generateQuestions(keyword: string, meta: { type: string }): string[] {
   questions.push(`How much does ${kw} cost?`);
   questions.push(`When is the best time for ${kw}?`);
 
-  if (meta.type === "tour") {
-    questions.push(`How long is the ${kw}?`);
-    questions.push(`What is included in the ${kw}?`);
-    questions.push(`Is ${kw} suitable for families with children?`);
-    questions.push(`How do I book ${kw}?`);
-  } else if (meta.type === "destination" || meta.type === "guide") {
-    questions.push(`How do I get to ${kw}?`);
-    questions.push(`What should I wear when visiting ${kw}?`);
-    questions.push(`Is ${kw} safe for tourists?`);
-    questions.push(`What are the opening hours for ${kw}?`);
-    questions.push(`Can I visit ${kw} with kids?`);
+  if (meta.type === "product" || meta.type === "service") {
+    questions.push(`What features does ${kw} include?`);
+    questions.push(`What are the pros and cons of ${kw}?`);
+    questions.push(`Who is ${kw} best suited for?`);
+    questions.push(`How do I get started with ${kw}?`);
+  } else if (meta.type === "guide") {
+    questions.push(`What are the key steps for ${kw}?`);
+    questions.push(`What common mistakes should I avoid with ${kw}?`);
+    questions.push(`What tools or resources help with ${kw}?`);
+    questions.push(`How long does it take to see results from ${kw}?`);
   } else {
     questions.push(`What should I know before ${kw}?`);
     questions.push(`What are the top tips for ${kw}?`);
@@ -434,7 +425,7 @@ async function findInternalLinkOpportunities(
     target_url: p.url,
     target_path: p.path,
     target_title: p.title || p.path,
-    anchor_text: (p.title || p.path).replace(/ - Travel2Egypt$/i, ""),
+    anchor_text: p.title || p.path,
     relevance_score: Math.min(p.score / keywordWords.length, 1),
   }));
 }
@@ -442,9 +433,9 @@ async function findInternalLinkOpportunities(
 function generateTitle(keyword: string, meta: { type: string; intent: string }): string {
   const kw = capitalize(keyword);
 
-  if (meta.type === "tour") return `${kw}: Complete Guide, Itinerary & Prices`;
-  if (meta.type === "guide") return `${kw}: The Ultimate Travel Guide`;
-  if (meta.type === "destination") return `${kw}: Top Attractions, Tips & Travel Guide`;
+  if (meta.type === "product") return `${kw}: Complete Guide, Features & Pricing`;
+  if (meta.type === "guide") return `${kw}: The Ultimate Guide`;
+  if (meta.type === "service") return `${kw}: What You Need to Know`;
   if (meta.type === "faq") return `${kw}: Your Questions Answered`;
   if (meta.type === "listicle") return `${kw}: Everything You Need to Know`;
   return `${kw}: A Complete Guide`;

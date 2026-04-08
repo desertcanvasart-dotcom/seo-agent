@@ -494,8 +494,8 @@ function guessContentType(path: string): string {
   const p = path.toLowerCase();
   if (p === "/" || p === "") return "homepage";
   if (p.includes("/blog") || p.includes("/news") || p.includes("/article")) return "blog";
-  if (p.includes("/tour") || p.includes("/package") || p.includes("/trip")) return "tour";
-  if (p.includes("/destination") || p.includes("/place") || p.includes("/city")) return "destination";
+  if (p.includes("/product") || p.includes("/item") || p.includes("/shop")) return "product";
+  if (p.includes("/service") || p.includes("/solution") || p.includes("/offering")) return "service";
   if (p.includes("/category") || p.includes("/tag")) return "category";
   if (p.includes("/about") || p.includes("/contact") || p.includes("/faq")) return "info";
   if (p.includes("/privacy") || p.includes("/terms") || p.includes("/legal")) return "legal";

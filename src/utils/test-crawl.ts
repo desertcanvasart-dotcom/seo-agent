@@ -5,7 +5,7 @@ import * as cheerio from "cheerio";
 const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 async function testCrawl() {
-  const domain = "travel2egypt.org";
+  const domain = process.env.TEST_DOMAIN || "example.com";
   const url = "https://" + domain;
 
   console.log("Fetching:", url);
@@ -63,7 +63,7 @@ async function testCrawl() {
     .from("pages")
     .upsert(
       {
-        site_id: "dd93832b-3f40-412f-88ca-b093c81359d4",
+        site_id: process.env.TEST_SITE_ID || "",
         url: url.replace(/\/$/, ""),
         path: "/",
         title: title,

@@ -7,13 +7,13 @@ async function check() {
   const { count: withEmb } = await supabase
     .from("pages")
     .select("id", { count: "exact", head: true })
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
     .not("embedding", "is", null);
 
   const { data: noEmb } = await supabase
     .from("pages")
     .select("path, word_count")
-    .eq("site_id", "dd93832b-3f40-412f-88ca-b093c81359d4")
+    .eq("site_id", process.env.TEST_SITE_ID || "")
     .is("embedding", null)
     .gt("word_count", 10);
 
