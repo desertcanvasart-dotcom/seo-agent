@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { deleteSiteAction, runAuditAction, runEmbedAction, reCrawlAction } from "@/lib/actions";
+import { deleteSiteAction, runAuditAction, reCrawlAction } from "@/lib/actions";
+import { startEmbed, startLinkGeneration } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -22,6 +23,7 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
   const [audit, setAudit] = useState(initialAudit);
   const [suggestions, setSuggestions] = useState(initialSuggestions);
   const [polling, setPolling] = useState(true);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const done = crawl?.crawl_status === "completed";
   const running = crawl?.crawl_status === "crawling";
@@ -33,8 +35,17 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     if (d.crawl) setCrawl(d.crawl);
     if (d.audit) setAudit(d.audit);
     setSuggestions(d.suggestions);
-    if (d.crawl?.crawl_status === "completed" && d.audit?.pages_audited > 0) setPolling(false);
-  }, [siteId]);
+
+    // If we were analyzing and suggestions appeared, stop
+    if (analyzing && d.suggestions > 0) {
+      setAnalyzing(false);
+    }
+
+    // Stop polling when everything is done
+    if (d.crawl?.crawl_status === "completed" && d.audit?.pages_audited > 0 && !analyzing) {
+      setPolling(false);
+    }
+  }, [siteId, analyzing]);
 
   useEffect(() => {
     if (!polling) return;
@@ -42,27 +53,56 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     return () => clearInterval(i);
   }, [poll, polling]);
 
+  // Handle Analyze click
+  async function handleAnalyze() {
+    setAnalyzing(true);
+    setPolling(true);
+    try {
+      await startEmbed(siteId);
+    } catch {}
+  }
+
   return (
     <div>
       {/* Pipeline */}
       <div className="bg-white border border-[#e8e5e0] rounded-2xl p-6 mb-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold text-[#1a1a1a]">Analysis Pipeline</h2>
-          {running && <span className="text-xs text-[#b8860b] animate-pulse">Updating live...</span>}
+          {(running || analyzing) && <span className="text-xs text-[#b8860b] animate-pulse">Updating live...</span>}
         </div>
         <div className="space-y-4">
-          <Step n={1} title="Crawl Pages" desc={done ? `${crawl.pages_crawled} pages found` : running ? `Crawling... ${crawl?.pages_crawled || 0} pages` : failed ? "Crawl failed" : "Waiting"} status={done ? "done" : running ? "running" : failed ? "failed" : "pending"}
+          {/* Step 1: Crawl */}
+          <Step n={1} title="Crawl Pages"
+            desc={done ? `${crawl.pages_crawled} pages found` : running ? `Crawling... ${crawl?.pages_crawled || 0} pages` : failed ? "Crawl failed" : "Waiting"}
+            status={done ? "done" : running ? "running" : failed ? "failed" : "pending"}
             action={failed ? <form action={reCrawlAction}><input type="hidden" name="siteId" value={siteId} /><button className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">Retry</button></form> : undefined}
           />
-          {running && <div className="ml-11"><div className="w-full bg-[#f1f3f4] rounded-full h-1.5"><div className="h-1.5 rounded-full bg-[#b8860b] transition-all" style={{ width: `${Math.min((crawl?.pages_crawled || 0) / 100 * 100, 95)}%` }} /></div></div>}
+          {running && <ProgressBar value={crawl?.pages_crawled || 0} max={100} />}
 
-          <Step n={2} title="SEO & GEO Audit" desc={hasAudit ? `${audit.pages_audited} pages scored` : "Score every page"} status={hasAudit ? "done" : "pending"}
+          {/* Step 2: Audit */}
+          <Step n={2} title="SEO & GEO Audit"
+            desc={hasAudit ? `${audit.pages_audited} pages scored — SEO: ${audit.avg_seo_score}, GEO: ${audit.avg_geo_score}` : "Score every page"}
+            status={hasAudit ? "done" : "pending"}
             action={done && !hasAudit ? <form action={runAuditAction}><input type="hidden" name="siteId" value={siteId} /><button className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">Run Audit</button></form> : undefined}
           />
 
-          <Step n={3} title="Internal Links" desc={suggestions > 0 ? `${suggestions} suggestions found` : "Find missing links with AI"} status={suggestions > 0 ? "done" : "pending"}
-            action={hasAudit && suggestions === 0 ? <form action={runEmbedAction}><input type="hidden" name="siteId" value={siteId} /><button className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">Analyze</button></form> : undefined}
+          {/* Step 3: Link Analysis */}
+          <Step n={3} title="Internal Link Analysis"
+            desc={
+              suggestions > 0
+                ? `${suggestions} link suggestions found`
+                : analyzing
+                  ? "Embedding pages and finding link opportunities..."
+                  : "Find missing links with AI"
+            }
+            status={suggestions > 0 ? "done" : analyzing ? "running" : "pending"}
+            action={hasAudit && suggestions === 0 && !analyzing ? (
+              <button onClick={handleAnalyze} className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">
+                Analyze
+              </button>
+            ) : undefined}
           />
+          {analyzing && <ProgressBar value={-1} max={100} indeterminate />}
         </div>
       </div>
 
@@ -91,6 +131,21 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
           <button className="text-xs text-[#c5221f] hover:text-[#a31b15] transition-colors">Delete this project</button>
         </form>
       </div>
+    </div>
+  );
+}
+
+function ProgressBar({ value, max, indeterminate }: { value: number; max: number; indeterminate?: boolean }) {
+  return (
+    <div className="ml-12">
+      <div className="w-full bg-[#f1f3f4] rounded-full h-1.5 overflow-hidden">
+        {indeterminate ? (
+          <div className="h-1.5 rounded-full bg-[#2d5a3d] w-1/3 animate-[slide_1.5s_ease-in-out_infinite]" />
+        ) : (
+          <div className="h-1.5 rounded-full bg-[#b8860b] transition-all duration-500" style={{ width: `${Math.min((value / max) * 100, 95)}%` }} />
+        )}
+      </div>
+      <style>{`@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(400%); } }`}</style>
     </div>
   );
 }
