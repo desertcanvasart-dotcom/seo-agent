@@ -37,7 +37,7 @@ export async function addSiteAction(_prevState: any, formData: FormData) {
       const sitesData = await getSites();
       const existing = sitesData.sites.find((s: any) => s.domain === domain);
       if (existing) {
-        redirect(`/sites/${existing.id}`);
+        redirect(`/dashboard/sites/${existing.id}`);
       }
     }
     return { error: err.message || "Failed to create site" };
@@ -50,7 +50,7 @@ export async function addSiteAction(_prevState: any, formData: FormData) {
     // Crawl might fail to start, still redirect to site page
   }
 
-  redirect(`/sites/${siteId}`);
+  redirect(`/dashboard/sites/${siteId}`);
 }
 
 // ─── Delete a site ───────────────────────────────────────────────
@@ -65,26 +65,27 @@ export async function deleteSiteAction(formData: FormData) {
 export async function reCrawlAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   await startCrawl(siteId);
-  revalidatePath(`/sites/${siteId}`);
+  revalidatePath(`/dashboard/sites/${siteId}`);
 }
 
 // ─── Run full pipeline on a site ─────────────────────────────────
 export async function runAuditAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   await startAudit(siteId);
-  revalidatePath(`/sites/${siteId}`);
+  revalidatePath(`/dashboard/sites/${siteId}`);
 }
 
 export async function runEmbedAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   await startEmbed(siteId);
-  revalidatePath(`/sites/${siteId}`);
+  revalidatePath(`/dashboard/sites/${siteId}`);
 }
 
 export async function runLinkGenerationAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   await startLinkGeneration(siteId);
-  revalidatePath("/links");
+  revalidatePath(`/dashboard/sites/${siteId}`);
+  revalidatePath(`/dashboard/sites/${siteId}/links`);
 }
 
 // ─── Approve / Reject link suggestions ───────────────────────────
@@ -92,14 +93,14 @@ export async function approveAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   const suggestionId = formData.get("suggestionId") as string;
   await approveSuggestion(siteId, suggestionId);
-  revalidatePath("/links");
+  revalidatePath(`/dashboard/sites/${siteId}/links`);
 }
 
 export async function rejectAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   const suggestionId = formData.get("suggestionId") as string;
   await rejectSuggestion(siteId, suggestionId);
-  revalidatePath("/links");
+  revalidatePath(`/dashboard/sites/${siteId}/links`);
 }
 
 // ─── Research ────────────────────────────────────────────────────
@@ -112,7 +113,7 @@ export async function startResearchAction(formData: FormData) {
   if (competitorUrls.length === 0) throw new Error("At least one competitor URL is required");
 
   await startResearch(siteId, competitorUrls, keyword || undefined);
-  revalidatePath("/research");
+  revalidatePath(`/dashboard/sites/${siteId}/research`);
 }
 
 // ─── Briefs ──────────────────────────────────────────────────────
@@ -122,12 +123,12 @@ export async function createBriefAction(formData: FormData) {
   if (!keyword) throw new Error("Keyword is required");
 
   await createBrief(siteId, keyword);
-  revalidatePath("/briefs");
+  revalidatePath(`/dashboard/sites/${siteId}/briefs`);
 }
 
 export async function generateDraftAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
   const briefId = formData.get("briefId") as string;
   await generateDraft(siteId, briefId);
-  revalidatePath(`/briefs/${briefId}`);
+  revalidatePath(`/dashboard/sites/${siteId}/briefs/${briefId}`);
 }
