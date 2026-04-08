@@ -23,12 +23,17 @@ links.post("/embed", async (c) => {
     return c.json({ error: "Site must be crawled first" }, 400);
   }
 
-  // Run in background
-  embedSitePages(siteId).catch((err) => {
-    console.error(`Embedding failed for ${site.domain}:`, err);
-  });
+  // Run embed then auto-generate links
+  embedSitePages(siteId)
+    .then(async () => {
+      console.log(`   🔗 Auto-generating link suggestions for ${site.domain}...`);
+      await generateLinkSuggestions(siteId);
+    })
+    .catch((err) => {
+      console.error(`Embedding/linking failed for ${site.domain}:`, err);
+    });
 
-  return c.json({ message: "Embedding started", site_id: siteId, domain: site.domain });
+  return c.json({ message: "Link analysis started — embedding pages then generating suggestions", site_id: siteId, domain: site.domain });
 });
 
 // POST /sites/:siteId/links/generate — Generate link suggestions

@@ -77,8 +77,13 @@ export async function runAuditAction(formData: FormData) {
 
 export async function runEmbedAction(formData: FormData) {
   const siteId = formData.get("siteId") as string;
+  // Start embed — this runs in background on the API
   await startEmbed(siteId);
+  // Wait a bit for embeddings to start, then trigger link generation
+  // The API runs these in background, so we fire both
+  await startLinkGeneration(siteId).catch(() => {});
   revalidatePath(`/dashboard/sites/${siteId}`);
+  revalidatePath(`/dashboard/sites/${siteId}/links`);
 }
 
 export async function runLinkGenerationAction(formData: FormData) {
