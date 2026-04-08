@@ -1,21 +1,53 @@
+import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+// Public routes that don't require auth
+const publicPaths = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/"];
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip auth for login page and static files
-  if (pathname === "/login" || pathname.startsWith("/_next") || pathname.startsWith("/favicon")) {
+  // Skip auth for public pages and static files
+  if (
+    publicPaths.includes(pathname) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.startsWith("/api/auth")
+  ) {
     return NextResponse.next();
   }
 
-  // Check session cookie
-  const session = request.cookies.get("seo_agent_session");
-  if (session?.value !== "authenticated") {
+  let response = NextResponse.next({
+    request: { headers: request.headers },
+  });
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value);
+            response = NextResponse.next({ request: { headers: request.headers } });
+            response.cookies.set(name, value, options);
+          });
+        },
+      },
+    }
+  );
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {
