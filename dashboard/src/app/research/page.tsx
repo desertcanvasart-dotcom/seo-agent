@@ -1,4 +1,5 @@
 import { getResearchJobs, getResearchGaps } from "@/lib/api";
+import { startResearchAction } from "@/lib/actions";
 
 const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
 
@@ -14,9 +15,41 @@ export default async function ResearchPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Research</h1>
-        <p className="text-sm text-[#888] mt-1">Competitor analysis and content gaps</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Research</h1>
+          <p className="text-sm text-[#888] mt-1">Competitor analysis and content gaps</p>
+        </div>
+      </div>
+
+      {/* New research form */}
+      <div className="border rounded-lg p-5 mb-8">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-[#888] mb-3">New Research</h2>
+        <form action={startResearchAction} className="space-y-3">
+          <input type="hidden" name="siteId" value={SITE_ID} />
+          <div>
+            <label className="block text-sm mb-1">Competitor URLs <span className="text-[#aaa]">(one per line)</span></label>
+            <textarea
+              name="competitorUrls"
+              rows={3}
+              placeholder={"https://competitor1.com\nhttps://competitor2.com"}
+              required
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#111] font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1">Keyword <span className="text-[#aaa]">(optional)</span></label>
+            <input
+              type="text"
+              name="keyword"
+              placeholder="e.g. egypt tours"
+              className="w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#111]"
+            />
+          </div>
+          <button className="px-4 py-2 bg-[#111] text-white text-sm rounded-lg hover:bg-[#333] transition-colors">
+            Start Research
+          </button>
+        </form>
       </div>
 
       {/* Jobs */}
@@ -113,9 +146,7 @@ export default async function ResearchPage() {
       )}
 
       {!gaps && jobs.length === 0 && (
-        <div className="border rounded-lg p-8 text-center text-[#888] text-sm">
-          No research yet. Start a research job from the API.
-        </div>
+        <p className="text-sm text-[#888]">Start a research job above to analyze competitors.</p>
       )}
     </div>
   );

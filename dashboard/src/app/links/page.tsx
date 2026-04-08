@@ -1,4 +1,5 @@
 import { getSuggestions } from "@/lib/api";
+import { approveAction, rejectAction } from "@/lib/actions";
 
 const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
 
@@ -30,7 +31,7 @@ export default async function LinksPage() {
               <th className="text-left p-3 text-[#888]">Anchor Text</th>
               <th className="text-right p-3 text-[#888] w-24">Similarity</th>
               <th className="text-center p-3 text-[#888] w-24">Confidence</th>
-              <th className="text-center p-3 text-[#888] w-32">Actions</th>
+              <th className="text-center p-3 text-[#888] w-36">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -61,12 +62,20 @@ export default async function LinksPage() {
                 </td>
                 <td className="p-3 text-center">
                   <div className="flex items-center justify-center gap-2">
-                    <button className="px-3 py-1 text-xs rounded border border-[#22c55e] text-[#22c55e] hover:bg-[#f0fdf4] transition-colors">
-                      Approve
-                    </button>
-                    <button className="px-3 py-1 text-xs rounded border border-[#e5e5e5] text-[#888] hover:bg-[#f5f5f5] transition-colors">
-                      Reject
-                    </button>
+                    <form action={approveAction}>
+                      <input type="hidden" name="siteId" value={SITE_ID} />
+                      <input type="hidden" name="suggestionId" value={s.id} />
+                      <button className="px-3 py-1 text-xs rounded border border-[#22c55e] text-[#22c55e] hover:bg-[#f0fdf4] transition-colors">
+                        Approve
+                      </button>
+                    </form>
+                    <form action={rejectAction}>
+                      <input type="hidden" name="siteId" value={SITE_ID} />
+                      <input type="hidden" name="suggestionId" value={s.id} />
+                      <button className="px-3 py-1 text-xs rounded border border-[#e5e5e5] text-[#888] hover:bg-[#f5f5f5] transition-colors">
+                        Reject
+                      </button>
+                    </form>
                   </div>
                 </td>
               </tr>

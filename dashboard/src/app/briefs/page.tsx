@@ -1,4 +1,5 @@
 import { getBriefs } from "@/lib/api";
+import { createBriefAction } from "@/lib/actions";
 import Link from "next/link";
 
 const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
@@ -9,15 +10,33 @@ export default async function BriefsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Content Briefs</h1>
-        <p className="text-sm text-[#888] mt-1">{allBriefs.length} briefs ready</p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Content Briefs</h1>
+          <p className="text-sm text-[#888] mt-1">{allBriefs.length} briefs ready</p>
+        </div>
+      </div>
+
+      {/* Create brief form */}
+      <div className="border rounded-lg p-5 mb-8">
+        <h2 className="text-xs font-medium uppercase tracking-wider text-[#888] mb-3">New Brief</h2>
+        <form action={createBriefAction} className="flex gap-3">
+          <input type="hidden" name="siteId" value={SITE_ID} />
+          <input
+            type="text"
+            name="keyword"
+            placeholder="Enter target keyword (e.g. best time to visit egypt)"
+            required
+            className="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-[#111]"
+          />
+          <button className="px-4 py-2 bg-[#111] text-white text-sm rounded-lg hover:bg-[#333] transition-colors shrink-0">
+            Generate Brief
+          </button>
+        </form>
       </div>
 
       {allBriefs.length === 0 ? (
-        <div className="border rounded-lg p-8 text-center text-[#888] text-sm">
-          No briefs yet. Generate them from research or the API.
-        </div>
+        <p className="text-sm text-[#888]">No briefs yet. Create one above or generate from research.</p>
       ) : (
         <div className="border rounded-lg overflow-hidden">
           <table className="w-full text-sm">

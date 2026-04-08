@@ -56,10 +56,12 @@ export default function RootLayout({
                 ))}
               </nav>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-[#22c55e]" />
-              <span className="text-xs text-[#888]">Connected</span>
-            </div>
+            <Link
+              href="/new"
+              className="px-3 py-1.5 rounded-md text-sm bg-[#111] text-white hover:bg-[#333] transition-colors"
+            >
+              + Add Site
+            </Link>
           </div>
         </header>
 

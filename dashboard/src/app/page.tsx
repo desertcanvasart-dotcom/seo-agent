@@ -1,4 +1,4 @@
-import { getAudit, getSuggestions, getBriefs, getCrawlStatus } from "@/lib/api";
+import { getSites, getAudit, getSuggestions, getBriefs, getCrawlStatus } from "@/lib/api";
 import Link from "next/link";
 
 const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
@@ -28,44 +28,84 @@ function Stat({ value, label, href }: { value: string | number; label: string; h
 }
 
 export default async function OverviewPage() {
-  let audit, suggestions, briefsData, crawl;
+  // Try to load data for the default site
+  let audit, suggestions, briefsData, crawl, sitesData;
 
   try {
-    [audit, suggestions, briefsData, crawl] = await Promise.all([
-      getAudit(SITE_ID).catch(() => null),
-      getSuggestions(SITE_ID).catch(() => null),
-      getBriefs(SITE_ID).catch(() => null),
-      getCrawlStatus(SITE_ID).catch(() => null),
+    [sitesData, audit, suggestions, briefsData, crawl] = await Promise.all([
+      getSites().catch(() => null),
+      SITE_ID ? getAudit(SITE_ID).catch(() => null) : null,
+      SITE_ID ? getSuggestions(SITE_ID).catch(() => null) : null,
+      SITE_ID ? getBriefs(SITE_ID).catch(() => null) : null,
+      SITE_ID ? getCrawlStatus(SITE_ID).catch(() => null) : null,
     ]);
   } catch {
     return (
       <div className="border border-[#ef4444] rounded-lg p-6 text-sm">
         <p className="font-medium text-[#ef4444]">Cannot connect to API</p>
-        <p className="text-[#888] mt-1">Make sure the server is running on port 8000.</p>
+        <p className="text-[#888] mt-1">Make sure the server is running.</p>
       </div>
     );
   }
 
+  const sites = sitesData?.sites || [];
   const s = audit?.summary || { pages_audited: 0, avg_seo_score: 0, avg_geo_score: 0, avg_total_score: 0, critical_issues: 0, high_issues: 0 };
 
+  // If no sites yet, show add site prompt
+  if (sites.length === 0) {
+    return (
+      <div className="text-center mt-20">
+        <h1 className="text-2xl font-semibold tracking-tight mb-2">No sites yet</h1>
+        <p className="text-[#888] mb-6">Add your first website to get started.</p>
+        <Link href="/new" className="px-6 py-3 bg-[#111] text-white text-sm rounded-lg hover:bg-[#333] transition-colors">
+          + Add Site
+        </Link>
+      </div>
+    );
+  }
+
+  // If we have a site but no audit data, show the sites list
+  if (!audit || s.pages_audited === 0) {
+    return (
+      <div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-semibold tracking-tight">Your Sites</h1>
+        </div>
+        <div className="space-y-3">
+          {sites.map((site: any) => (
+            <Link key={site.id} href={`/sites/${site.id}`} className="block">
+              <div className="border rounded-lg p-5 hover:border-[#22c55e] transition-colors">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{site.domain}</p>
+                    <p className="text-xs text-[#888] mt-0.5">{site.page_count} pages &middot; {site.crawl_status}</p>
+                  </div>
+                  <span className="text-xs text-[#22c55e]">View &rarr;</span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Full dashboard with data
   return (
     <div>
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
         <p className="text-sm text-[#888] mt-1">
-          {crawl?.domain || "travel2egypt.org"} &middot; {crawl?.pages_crawled || 0} pages &middot; Last crawl {crawl?.crawl_completed_at ? new Date(crawl.crawl_completed_at).toLocaleDateString() : "never"}
+          {crawl?.domain || "—"} &middot; {crawl?.pages_crawled || 0} pages &middot; Last crawl {crawl?.crawl_completed_at ? new Date(crawl.crawl_completed_at).toLocaleDateString() : "never"}
         </p>
       </div>
 
-      {/* Scores */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <Score value={s.avg_seo_score} label="SEO Score" />
         <Score value={s.avg_geo_score} label="GEO Score" />
         <Score value={s.avg_total_score} label="Overall" />
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-8">
         <Stat value={s.pages_audited} label="Pages Audited" href="/audit" />
         <Stat value={s.critical_issues} label="Critical Issues" href="/audit" />
@@ -73,7 +113,6 @@ export default async function OverviewPage() {
         <Stat value={briefsData?.briefs?.length || 0} label="Content Briefs" href="/briefs" />
       </div>
 
-      {/* Pages table */}
       {audit?.audits && audit.audits.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -108,9 +147,7 @@ export default async function OverviewPage() {
                       </td>
                       <td className="p-3 text-right tabular-nums font-medium">{a.total_score}</td>
                       <td className="p-3">
-                        {topRec && (
-                          <span className="text-xs text-[#888]">{topRec.message}</span>
-                        )}
+                        {topRec && <span className="text-xs text-[#888]">{topRec.message}</span>}
                       </td>
                     </tr>
                   );

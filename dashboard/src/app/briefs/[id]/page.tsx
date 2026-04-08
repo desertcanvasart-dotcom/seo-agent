@@ -1,4 +1,5 @@
 import { getBrief } from "@/lib/api";
+import { generateDraftAction } from "@/lib/actions";
 import Link from "next/link";
 
 const SITE_ID = process.env.NEXT_PUBLIC_SITE_ID || "";
@@ -107,10 +108,10 @@ export default async function BriefDetailPage({ params }: { params: Promise<{ id
             </ul>
           </div>
 
-          {/* Meta */}
+          {/* Meta + Generate Draft */}
           <div className="border rounded-lg p-5">
             <h2 className="text-xs font-medium uppercase tracking-wider text-[#888] mb-3">Info</h2>
-            <dl className="text-sm space-y-2">
+            <dl className="text-sm space-y-2 mb-4">
               <div className="flex justify-between">
                 <dt className="text-[#888]">Status</dt>
                 <dd>{brief.status}</dd>
@@ -124,6 +125,18 @@ export default async function BriefDetailPage({ params }: { params: Promise<{ id
                 <dd>{new Date(brief.created_at).toLocaleDateString()}</dd>
               </div>
             </dl>
+            {brief.draft_status === "none" && (
+              <form action={generateDraftAction}>
+                <input type="hidden" name="siteId" value={SITE_ID} />
+                <input type="hidden" name="briefId" value={brief.id} />
+                <button className="w-full py-2 bg-[#111] text-white text-sm rounded-lg hover:bg-[#333] transition-colors">
+                  Generate AI Draft
+                </button>
+              </form>
+            )}
+            {brief.draft_status === "generating" && (
+              <p className="text-xs text-center text-[#3b82f6] animate-pulse">Generating draft...</p>
+            )}
           </div>
         </div>
       </div>

@@ -74,3 +74,36 @@ export async function startAudit(siteId: string) {
 export async function getCrawlStatus(siteId: string) {
   return apiFetch(`/sites/${siteId}/crawl/status`);
 }
+
+export async function createSite(domain: string, name?: string) {
+  return apiFetch("/sites", {
+    method: "POST",
+    body: JSON.stringify({ domain, name }),
+  });
+}
+
+export async function startEmbed(siteId: string) {
+  return apiFetch(`/sites/${siteId}/links/embed`, { method: "POST" });
+}
+
+export async function startLinkGeneration(siteId: string) {
+  return apiFetch(`/sites/${siteId}/links/generate`, { method: "POST" });
+}
+
+export async function startResearch(siteId: string, competitorUrls: string[], keyword?: string) {
+  return apiFetch(`/sites/${siteId}/research`, {
+    method: "POST",
+    body: JSON.stringify({ competitor_urls: competitorUrls, keyword }),
+  });
+}
+
+export async function createBrief(siteId: string, targetKeyword: string) {
+  return apiFetch(`/sites/${siteId}/briefs`, {
+    method: "POST",
+    body: JSON.stringify({ target_keyword: targetKeyword }),
+  });
+}
+
+export async function generateDraft(siteId: string, briefId: string) {
+  return apiFetch(`/sites/${siteId}/briefs/${briefId}/draft`, { method: "POST" });
+}
