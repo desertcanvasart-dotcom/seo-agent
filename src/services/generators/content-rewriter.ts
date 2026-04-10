@@ -22,8 +22,6 @@ export interface ContentRewriteResult {
   overall_citability_score: number;
   rewrites: RewrittenPassage[];
   faq_additions: FaqPair[];       // Q&A pairs to add at the end of the page
-  title_suggestion: string | null;
-  meta_description_suggestion: string | null;
   generated_at: string;
 }
 
@@ -56,11 +54,9 @@ interface AuditInput {
   citable_blocks: CitableBlock[];
   eeat_score: number;
   content_structure_issues: string[];
-  title_pass: boolean;
-  meta_pass: boolean;
 }
 
-// ─── Build the system prompt ─────────────────────────────────────
+// ─── Build the system prompt (cacheable) ─────────────────────────
 function buildSystemPrompt(): string {
   return `You are a GEO (Generative Engine Optimization) content specialist. Your job is to rewrite web page passages so they are more likely to be cited by AI assistants (ChatGPT, Perplexity, Claude, Google AI Overviews).
 
@@ -111,9 +107,7 @@ Return ONLY a valid JSON object. No prose, no markdown fences, no explanation ou
       "question": "Question text ending with ?",
       "answer": "80-120 word answer, answer-first, self-contained."
     }
-  ],
-  "title_suggestion": "Improved title (30-60 chars) or null if current is fine",
-  "meta_description_suggestion": "Improved meta description (120-155 chars) or null if current is fine"
+  ]
 }`;
 }
 
@@ -136,8 +130,6 @@ function buildUserPrompt(page: PageInput, audit: AuditInput): string {
 ## PAGE CONTEXT
 URL: ${page.url}
 Content type: ${page.content_type}
-Current title: ${page.title || "Missing"}
-Current meta description: ${page.meta_description || "Missing"}
 H1: ${page.h1 || "Missing"}
 Overall citability score: ${audit.citability_score}/100
 Word count: ${page.word_count}
@@ -168,9 +160,7 @@ ${page.body_text.split(/\s+/).slice(0, 2000).join(" ")}
 
 ## TASKS
 1. Rewrite each low-scoring passage above. If fewer than 3 passages were provided, identify additional weak passages from the content sample.
-2. Generate ${audit.citability_score < 40 ? "7" : "5"} FAQ pairs based on the content.
-3. ${!audit.title_pass ? "Suggest an improved title (30-60 chars) that includes the primary keyword." : "Set title_suggestion to null — the title is fine."}
-4. ${!audit.meta_pass ? "Suggest an improved meta description (120-155 chars) that summarizes the page's value and includes the primary keyword." : "Set meta_description_suggestion to null — the meta description is fine."}`;
+2. Generate ${audit.citability_score < 40 ? "7" : "5"} FAQ pairs based on the content.`;
 }
 
 // ─── Main rewriter function ───────────────────────────────────────
@@ -179,15 +169,13 @@ export async function rewritePageContent(
   audit: AuditInput
 ): Promise<ContentRewriteResult> {
   // Only rewrite pages with low citability
-  if (audit.citability_score >= 65 && audit.title_pass && audit.meta_pass) {
+  if (audit.citability_score >= 65) {
     return {
       page_id: page.id,
       url: page.url,
       overall_citability_score: audit.citability_score,
       rewrites: [],
       faq_additions: [],
-      title_suggestion: null,
-      meta_description_suggestion: null,
       generated_at: new Date().toISOString(),
     };
   }
@@ -197,7 +185,13 @@ export async function rewritePageContent(
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
     max_tokens: 4096,
-    system: buildSystemPrompt(),
+    system: [
+      {
+        type: "text",
+        text: buildSystemPrompt(),
+        cache_control: { type: "ephemeral" },
+      },
+    ],
     messages: [{ role: "user", content: buildUserPrompt(page, audit) }],
   });
 
@@ -211,11 +205,9 @@ export async function rewritePageContent(
     .replace(/\s*```$/i, "")
     .trim();
 
-  let parsed: Omit<ContentRewriteResult, "page_id" | "url" | "overall_citability_score" | "generated_at"> = {
+  let parsed: { rewrites: RewrittenPassage[]; faq_additions: FaqPair[] } = {
     rewrites: [],
     faq_additions: [],
-    title_suggestion: null,
-    meta_description_suggestion: null,
   };
 
   try {
@@ -228,7 +220,8 @@ export async function rewritePageContent(
     page_id: page.id,
     url: page.url,
     overall_citability_score: audit.citability_score,
-    ...parsed,
+    rewrites: parsed.rewrites || [],
+    faq_additions: parsed.faq_additions || [],
     generated_at: new Date().toISOString(),
   };
 }
@@ -236,15 +229,17 @@ export async function rewritePageContent(
 // ─── Run rewrites for all low-scoring pages in a site ─────────────
 export async function rewriteSiteContent(
   siteId: string,
+  options: { maxPages?: number; force?: boolean } = {},
   onProgress?: (done: number, total: number) => void
 ): Promise<ContentRewriteResult[]> {
+  const { maxPages = 10, force = false } = options;
+
   // Get audits with low citability scores
   const { data: audits } = await supabase
     .from("audits")
     .select(`
       page_id,
       geo_checks,
-      seo_checks,
       pages (
         id, url, path, title, meta_description, h1,
         headings, body_text, word_count, content_type
@@ -255,31 +250,63 @@ export async function rewriteSiteContent(
 
   if (!audits || audits.length === 0) return [];
 
-  // Filter to pages worth rewriting
+  // Filter to pages worth rewriting (citability < 65 only)
+  // Title/meta fixes are handled by fixes-generator.ts, not here
   const candidates = audits.filter((a) => {
     const geo = a.geo_checks as any;
-    const seo = a.seo_checks as any;
     const citability = geo?.citability?.score ?? 100;
-    const titlePass = seo?.title?.pass ?? true;
-    const metaPass = seo?.meta_description?.pass ?? true;
-    return citability < 65 || !titlePass || !metaPass;
+    return citability < 65;
   });
 
-  console.log(`\n✍️  Rewriting content for ${candidates.length} pages`);
+  // Sort worst-first
+  candidates.sort((a, b) => {
+    const ga = (a.geo_checks as any)?.citability?.score ?? 100;
+    const gb = (b.geo_checks as any)?.citability?.score ?? 100;
+    return ga - gb;
+  });
+
+  // Dedup: skip pages already rewritten (unless force=true)
+  let toProcess = candidates;
+  if (!force) {
+    const pageIds = candidates.map((a) => (a as any).pages?.id).filter(Boolean);
+    const { data: existing } = await supabase
+      .from("generated_fixes")
+      .select("page_id")
+      .eq("site_id", siteId)
+      .eq("fix_type", "content_rewrite")
+      .neq("status", "dismissed")
+      .in("page_id", pageIds);
+
+    const existingIds = new Set((existing || []).map((e) => e.page_id));
+    toProcess = candidates.filter((a) => !existingIds.has((a as any).pages?.id));
+
+    if (toProcess.length < candidates.length) {
+      console.log(`   ⏭️  Skipping ${candidates.length - toProcess.length} already-rewritten pages`);
+    }
+  }
+
+  // Cap to maxPages
+  toProcess = toProcess.slice(0, maxPages);
+
+  if (toProcess.length === 0) {
+    console.log(`   ✓ No pages need rewriting`);
+    return [];
+  }
+
+  console.log(`\n✍️  Rewriting content for ${toProcess.length} pages (cap: ${maxPages})`);
 
   const results: ContentRewriteResult[] = [];
   let processed = 0;
 
-  for (const a of candidates) {
+  for (const a of toProcess) {
     const page = (a as any).pages;
     if (!page || page.word_count < 100) {
       processed++;
-      if (onProgress) onProgress(processed, candidates.length);
+      if (onProgress) onProgress(processed, toProcess.length);
       continue;
     }
 
     const geo = a.geo_checks as any;
-    const seo = a.seo_checks as any;
 
     const audit: AuditInput = {
       citability_score: geo?.citability?.score ?? 0,
@@ -289,8 +316,6 @@ export async function rewriteSiteContent(
         ...(geo?.content_structure?.issues ?? []),
         ...(geo?.eeat_signals?.issues ?? []),
       ],
-      title_pass: seo?.title?.pass ?? false,
-      meta_pass: seo?.meta_description?.pass ?? false,
     };
 
     try {
@@ -313,7 +338,7 @@ export async function rewriteSiteContent(
     }
 
     processed++;
-    if (onProgress) onProgress(processed, candidates.length);
+    if (onProgress) onProgress(processed, toProcess.length);
 
     await new Promise((r) => setTimeout(r, 800));
   }
