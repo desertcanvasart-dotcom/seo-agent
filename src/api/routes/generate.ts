@@ -152,7 +152,7 @@ generate.post("/meta", async (c) => {
 });
 
 // ─── GET /sites/:siteId/generate/fixes ──────────────────────────
-// List all generated fixes for a site (with optional filter)
+// List all generated fixes for a site (with optional filter + pagination)
 generate.get("/fixes", async (c) => {
   const apiKeyId = c.get("apiKeyId");
   const siteId = c.req.param("siteId")!;
@@ -162,6 +162,8 @@ generate.get("/fixes", async (c) => {
 
   const fixType = c.req.query("type");   // optional: schema | content_rewrite | llms_txt | robots_txt | meta_title
   const status = c.req.query("status");  // optional: pending | approved | dismissed
+  const limit = Math.min(Number(c.req.query("limit") || 100), 500);
+  const offset = Number(c.req.query("offset") || 0);
 
   let query = supabase
     .from("generated_fixes")
@@ -170,32 +172,49 @@ generate.get("/fixes", async (c) => {
       page_id,
       generated_content,
       pages (url, path, title, content_type)
-    `)
+    `, { count: "exact" })
     .eq("site_id", siteId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(offset, offset + limit - 1);
 
   if (fixType) query = query.eq("fix_type", fixType);
   if (status) query = query.eq("status", status);
 
-  const { data, error } = await query;
+  const { data, error, count } = await query;
   if (error) return c.json({ error: error.message }, 500);
 
-  // Summary counts
-  const all = data || [];
+  // Flatten nested pages object for dashboard compatibility
+  // Dashboard expects fix.page_url and fix.page_path as flat fields.
+  // Site-level fixes (page_id = null) get null values — dashboard handles this.
+  const flat = (data || []).map((f: any) => ({
+    id: f.id,
+    fix_type: f.fix_type,
+    status: f.status,
+    created_at: f.created_at,
+    updated_at: f.updated_at,
+    page_id: f.page_id,
+    page_url: f.pages?.url ?? null,
+    page_path: f.pages?.path ?? null,
+    page_title: f.pages?.title ?? null,
+    page_content_type: f.pages?.content_type ?? null,
+    generated_content: f.generated_content,
+  }));
+
+  // Summary counts — from full count, not just this page
   const counts = {
-    total: all.length,
-    pending: all.filter((f) => f.status === "pending").length,
-    approved: all.filter((f) => f.status === "approved").length,
-    dismissed: all.filter((f) => f.status === "dismissed").length,
+    total: count ?? flat.length,
+    pending: flat.filter((f) => f.status === "pending").length,
+    approved: flat.filter((f) => f.status === "approved").length,
+    dismissed: flat.filter((f) => f.status === "dismissed").length,
     by_type: Object.fromEntries(
       ["schema", "content_rewrite", "llms_txt", "robots_txt", "meta_title"].map((t) => [
         t,
-        all.filter((f) => f.fix_type === t).length,
+        flat.filter((f) => f.fix_type === t).length,
       ])
     ),
   };
 
-  return c.json({ summary: counts, fixes: all });
+  return c.json({ summary: counts, fixes: flat, limit, offset });
 });
 
 // ─── PATCH /sites/:siteId/generate/fixes/:fixId ──────────────────
@@ -217,13 +236,28 @@ generate.patch("/fixes/:fixId", async (c) => {
   const parsed = updateFixSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "Invalid request" }, 400);
 
+  // Verify the fix exists and belongs to this site before updating
+  const { data: existing } = await supabase
+    .from("generated_fixes")
+    .select("id")
+    .eq("id", fixId)
+    .eq("site_id", siteId)
+    .maybeSingle();
+
+  if (!existing) return c.json({ error: "Fix not found" }, 404);
+
+  // Only update `note` if explicitly provided — don't null out existing notes
+  const updatePayload: Record<string, any> = {
+    status: parsed.data.status,
+    reviewed_at: new Date().toISOString(),
+  };
+  if (parsed.data.note !== undefined) {
+    updatePayload.note = parsed.data.note;
+  }
+
   const { error } = await supabase
     .from("generated_fixes")
-    .update({
-      status: parsed.data.status,
-      note: parsed.data.note || null,
-      reviewed_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", fixId)
     .eq("site_id", siteId);
 
@@ -243,6 +277,23 @@ generate.post("/all", async (c) => {
 
   if (site.crawl_status !== "completed") {
     return c.json({ error: "Run a site crawl first" }, 409);
+  }
+
+  // Rate limit: reject if any fix was created in the last 2 minutes
+  // (protects against accidental double-clicks and cost blowups)
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { data: recent } = await supabase
+    .from("generated_fixes")
+    .select("id")
+    .eq("site_id", siteId)
+    .gte("created_at", twoMinutesAgo)
+    .limit(1);
+
+  if (recent && recent.length > 0) {
+    return c.json({
+      error: "Generation already in progress or recently completed",
+      retry_after_seconds: 120,
+    }, 429);
   }
 
   // Run all generators in background, sequentially to avoid API rate limits

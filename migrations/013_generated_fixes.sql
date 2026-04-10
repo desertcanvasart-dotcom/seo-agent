@@ -32,7 +32,15 @@ CREATE TABLE IF NOT EXISTS generated_fixes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- One active fix per page per type (upsert target)
+-- NOTE on the two partial unique indexes below:
+-- Page-level fixes (schema, content_rewrite, meta_title) have a non-null page_id.
+-- Site-level fixes (llms_txt, robots_txt) have page_id = NULL.
+-- We use TWO partial unique indexes so each case has its own upsert target.
+-- Supabase .upsert() with { onConflict: "page_id,fix_type" } matches the first index,
+-- { onConflict: "site_id,fix_type" } matches the second. Both work correctly because
+-- Postgres selects the matching partial index based on the WHERE clause.
+
+-- One active fix per page per type (upsert target for page-level fixes)
 CREATE UNIQUE INDEX IF NOT EXISTS idx_generated_fixes_page_type
   ON generated_fixes (page_id, fix_type)
   WHERE page_id IS NOT NULL;
