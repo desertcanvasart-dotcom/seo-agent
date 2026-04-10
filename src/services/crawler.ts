@@ -464,6 +464,43 @@ export async function crawlSite(options: CrawlOptions, onProgress?: (p: CrawlPro
         console.log(`   🔗 Generating link suggestions...`);
         await generateLinkSuggestions(siteId);
 
+        // Generate fixes for critical issues
+        console.log(`   🔧 Generating fixes...`);
+        try {
+          const { generateRobotsFix, generateMetaTitleFixes } = await import(
+            "./generators/fixes-generator.js"
+          );
+          const { generateLlmsTxt } = await import(
+            "./generators/llmstxt-generator.js"
+          );
+          const { generateSiteSchemas } = await import(
+            "./generators/schema-generator.js"
+          );
+          const { rewriteSiteContent } = await import(
+            "./generators/content-rewriter.js"
+          );
+
+          await generateRobotsFix(siteId).catch((e: Error) =>
+            console.error(`   ⚠️  Robots fix skipped: ${e.message}`)
+          );
+          await generateLlmsTxt(siteId).catch((e: Error) =>
+            console.error(`   ⚠️  llms.txt skipped: ${e.message}`)
+          );
+          await generateSiteSchemas(siteId).catch((e: Error) =>
+            console.error(`   ⚠️  Schema gen skipped: ${e.message}`)
+          );
+          await generateMetaTitleFixes(siteId).catch((e: Error) =>
+            console.error(`   ⚠️  Meta fixes skipped: ${e.message}`)
+          );
+          await rewriteSiteContent(siteId).catch((e: Error) =>
+            console.error(`   ⚠️  Content rewrites skipped: ${e.message}`)
+          );
+
+          console.log(`   ✅ Fix generation complete`);
+        } catch (err) {
+          console.error(`   ❌ Fix generation failed:`, (err as Error).message);
+        }
+
         console.log(`   ✅ Auto-pipeline complete!`);
       } catch (err) {
         console.error(`   ❌ Auto-pipeline error:`, (err as Error).message);

@@ -122,3 +122,28 @@ export async function createBrief(siteId: string, targetKeyword: string) {
 export async function generateDraft(siteId: string, briefId: string) {
   return apiFetch(`/sites/${siteId}/briefs/${briefId}/draft`, { method: "POST" });
 }
+
+export async function getFixes(siteId: string, type?: string, status?: string) {
+  let path = `/sites/${siteId}/generate/fixes?`;
+  if (type) path += `type=${type}&`;
+  if (status) path += `status=${status}&`;
+  return apiFetch(path);
+}
+
+export async function runAllGenerators(siteId: string) {
+  return apiFetch(`/sites/${siteId}/generate/all`, { method: "POST" });
+}
+
+export async function approveFix(siteId: string, fixId: string) {
+  return apiFetch(`/sites/${siteId}/generate/fixes/${fixId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "approved" }),
+  });
+}
+
+export async function dismissFix(siteId: string, fixId: string) {
+  return apiFetch(`/sites/${siteId}/generate/fixes/${fixId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: "dismissed" }),
+  });
+}

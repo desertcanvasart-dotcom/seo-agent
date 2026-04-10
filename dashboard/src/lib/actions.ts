@@ -15,6 +15,9 @@ import {
   startResearch,
   createBrief,
   generateDraft,
+  runAllGenerators,
+  approveFix,
+  dismissFix,
 } from "./api";
 
 // ─── Add a new site and start crawling ───────────────────────────
@@ -136,4 +139,25 @@ export async function generateDraftAction(formData: FormData) {
   const briefId = formData.get("briefId") as string;
   await generateDraft(siteId, briefId);
   revalidatePath(`/dashboard/sites/${siteId}/briefs/${briefId}`);
+}
+
+// ─── Fixes ───────────────────────────────────────────────────────
+export async function runGeneratorsAction(formData: FormData) {
+  const siteId = formData.get("siteId") as string;
+  await runAllGenerators(siteId);
+  revalidatePath(`/dashboard/sites/${siteId}/fixes`);
+}
+
+export async function approveFixAction(formData: FormData) {
+  const siteId = formData.get("siteId") as string;
+  const fixId = formData.get("fixId") as string;
+  await approveFix(siteId, fixId);
+  revalidatePath(`/dashboard/sites/${siteId}/fixes`);
+}
+
+export async function dismissFixAction(formData: FormData) {
+  const siteId = formData.get("siteId") as string;
+  const fixId = formData.get("fixId") as string;
+  await dismissFix(siteId, fixId);
+  revalidatePath(`/dashboard/sites/${siteId}/fixes`);
 }

@@ -18,6 +18,7 @@ export default async function SiteLayout({
     { href: `/dashboard/sites/${id}/links`, label: "Links" },
     { href: `/dashboard/sites/${id}/research`, label: "Research" },
     { href: `/dashboard/sites/${id}/briefs`, label: "Briefs" },
+    { href: `/dashboard/sites/${id}/fixes`, label: "Fixes" },
   ];
 
   return (
