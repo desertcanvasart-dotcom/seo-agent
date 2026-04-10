@@ -126,6 +126,9 @@ generate.post("/robots", async (c) => {
 
   try {
     const result = await generateRobotsFix(siteId);
+    if (result === null) {
+      return c.json({ result: null, message: "No fix needed — all AI crawlers are already allowed" });
+    }
     return c.json({ result });
   } catch (err) {
     return c.json({ error: (err as Error).message }, 500);
