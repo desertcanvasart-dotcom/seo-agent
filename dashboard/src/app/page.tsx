@@ -21,6 +21,9 @@ export default function HomePage() {
                   {item}
                 </a>
               ))}
+              <Link href="/walkthrough" className="text-[13px] text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors font-medium">
+                Guide
+              </Link>
               <Link href="/docs" className="text-[13px] text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors font-medium">
                 API
               </Link>
@@ -266,6 +269,7 @@ export default function HomePage() {
             <span className="text-[13px] font-semibold text-[#7a8a7f]">SEO Agent</span>
           </div>
           <div className="flex items-center gap-8 text-[12px] text-[#4a5a4f]">
+            <Link href="/walkthrough" className="hover:text-[#7a8a7f] transition-colors">Walkthrough</Link>
             <Link href="/docs" className="hover:text-[#7a8a7f] transition-colors">API Docs</Link>
             <Link href="/login" className="hover:text-[#7a8a7f] transition-colors">Login</Link>
             <Link href="/signup" className="hover:text-[#7a8a7f] transition-colors">Sign Up</Link>
