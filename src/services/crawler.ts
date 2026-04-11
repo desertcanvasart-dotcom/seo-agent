@@ -259,9 +259,12 @@ async function fetchPageWithBrowser(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     );
 
+    // Use "domcontentloaded" instead of "networkidle2" — many WordPress sites
+    // with analytics/chat widgets never reach network idle. 45s timeout gives
+    // slow sites room to breathe without killing the pipeline.
     const response = await page.goto(url, {
-      waitUntil: "networkidle2",
-      timeout: 15000,
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
     });
 
     const statusCode = response?.status() ?? 0;
@@ -270,18 +273,29 @@ async function fetchPageWithBrowser(
       return { html: "", statusCode };
     }
 
-    // Wait a bit for any lazy-loaded content
-    await page.evaluate(() => {
-      window.scrollTo(0, document.body.scrollHeight);
-    });
-    await new Promise((r) => setTimeout(r, 1000));
+    // Wait briefly for JS hydration + lazy-loaded content.
+    // Scroll triggers lazy loading. 2s settle time.
+    try {
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+    } catch {
+      // Ignore scroll errors on edge-case pages
+    }
+    await new Promise((r) => setTimeout(r, 2000));
 
     // Get the fully rendered HTML
     const html = await page.content();
 
     return { html, statusCode };
   } catch (err) {
-    console.error(`   ❌ Browser fetch error for ${url}:`, (err as Error).message);
+    const msg = (err as Error).message;
+    // Only log non-timeout errors as hard failures — timeouts are common and expected
+    if (msg.includes("timeout")) {
+      console.warn(`   ⚠️  Timeout for ${url} — falling back to simple fetch`);
+    } else {
+      console.error(`   ❌ Browser fetch error for ${url}:`, msg);
+    }
     return null;
   } finally {
     if (page) await page.close().catch(() => {});
@@ -346,11 +360,17 @@ export async function crawlSite(options: CrawlOptions, onProgress?: (p: CrawlPro
         continue;
       }
 
-      // Fetch page
+      // Fetch page — try Puppeteer first, fall back to plain HTTP on timeout/error
       console.log(`   📄 [${crawledCount + 1}/${maxPages}] ${cleanUrl}`);
-      const result = browser
+      let result = browser
         ? await fetchPageWithBrowser(browser, cleanUrl)
         : await fetchPageSimple(cleanUrl);
+
+      // Fallback: if Puppeteer failed (null), try plain HTTP fetch
+      if (!result && browser) {
+        console.log(`      → Falling back to simple HTTP fetch`);
+        result = await fetchPageSimple(cleanUrl);
+      }
 
       if (!result) {
         failedCount++;
