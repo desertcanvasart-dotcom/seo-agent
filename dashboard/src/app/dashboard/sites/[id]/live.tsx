@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { deleteSiteAction, runAuditAction, reCrawlAction } from "@/lib/actions";
-import { startEmbed, startLinkGeneration } from "@/lib/api";
+import { startEmbed } from "@/lib/api";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/v1";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "";
@@ -23,9 +23,9 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
   const [audit, setAudit] = useState(initialAudit);
   const [suggestions, setSuggestions] = useState(initialSuggestions);
   const [polling, setPolling] = useState(true);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [analyzeStarted, setAnalyzeStarted] = useState(0); // timestamp when analyze started
-  const [analyzeDone, setAnalyzeDone] = useState(false); // true when embed+links finished
+  const [linkStatus, setLinkStatus] = useState<"idle" | "running" | "done">(
+    initialSuggestions > 0 ? "done" : "idle"
+  );
 
   const done = crawl?.crawl_status === "completed";
   const running = crawl?.crawl_status === "crawling";
@@ -38,20 +38,16 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     if (d.audit) setAudit(d.audit);
     setSuggestions(d.suggestions);
 
-    if (analyzing) {
-      // Stop analyzing if: suggestions appeared OR 3 minutes elapsed (covers 0-suggestion case)
-      const elapsed = (Date.now() - analyzeStarted) / 1000;
-      if (d.suggestions > 0 || elapsed > 180) {
-        setAnalyzing(false);
-        setAnalyzeDone(true);
-      }
+    // If link analysis was running and suggestions appeared, mark done
+    if (linkStatus === "running" && d.suggestions > 0) {
+      setLinkStatus("done");
     }
 
-    // Stop polling when everything is done
-    if (d.crawl?.crawl_status === "completed" && d.audit?.pages_audited > 0 && !analyzing) {
+    // Stop polling when crawl and audit are done and not running link analysis
+    if (d.crawl?.crawl_status === "completed" && d.audit?.pages_audited > 0 && linkStatus !== "running") {
       setPolling(false);
     }
-  }, [siteId, analyzing, analyzeStarted]);
+  }, [siteId, linkStatus]);
 
   useEffect(() => {
     if (!polling) return;
@@ -59,15 +55,18 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     return () => clearInterval(i);
   }, [poll, polling]);
 
-  // Handle Analyze click
+  // Handle Analyze click — fire and forget with a 2-minute auto-complete
   async function handleAnalyze() {
-    setAnalyzing(true);
-    setAnalyzeDone(false);
-    setAnalyzeStarted(Date.now());
+    setLinkStatus("running");
     setPolling(true);
     try {
       await startEmbed(siteId);
     } catch {}
+
+    // Auto-mark done after 2 minutes regardless (handles 0-suggestion case)
+    setTimeout(() => {
+      setLinkStatus((prev) => prev === "running" ? "done" : prev);
+    }, 120000);
   }
 
   return (
@@ -76,7 +75,7 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
       <div className="bg-white border border-[#e8e5e0] rounded-2xl p-6 mb-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-sm font-semibold text-[#1a1a1a]">Analysis Pipeline</h2>
-          {(running || analyzing) && <span className="text-xs text-[#b8860b] animate-pulse">Updating live...</span>}
+          {(running || linkStatus === "running") && <span className="text-xs text-[#b8860b] animate-pulse">Updating live...</span>}
         </div>
         <div className="space-y-4">
           {/* Step 1: Crawl */}
@@ -99,20 +98,20 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
             desc={
               suggestions > 0
                 ? `${suggestions} link suggestions found`
-                : analyzing
+                : linkStatus === "running"
                   ? "Embedding pages and finding link opportunities..."
-                  : analyzeDone
-                    ? "Analysis complete — no new link opportunities found (existing linking is good)"
+                  : linkStatus === "done"
+                    ? "Analysis complete — no new link opportunities found"
                     : "Find missing links with AI"
             }
-            status={suggestions > 0 || analyzeDone ? "done" : analyzing ? "running" : "pending"}
-            action={hasAudit && suggestions === 0 && !analyzing && !analyzeDone ? (
+            status={suggestions > 0 || linkStatus === "done" ? "done" : linkStatus === "running" ? "running" : "pending"}
+            action={hasAudit && suggestions === 0 && linkStatus === "idle" ? (
               <button onClick={handleAnalyze} className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">
                 Analyze
               </button>
             ) : undefined}
           />
-          {analyzing && <ProgressBar value={-1} max={100} indeterminate />}
+          {linkStatus === "running" && <ProgressBar value={-1} max={100} indeterminate />}
         </div>
       </div>
 
