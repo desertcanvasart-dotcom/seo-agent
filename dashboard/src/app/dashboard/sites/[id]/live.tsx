@@ -24,6 +24,8 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
   const [suggestions, setSuggestions] = useState(initialSuggestions);
   const [polling, setPolling] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeStarted, setAnalyzeStarted] = useState(0); // timestamp when analyze started
+  const [analyzeDone, setAnalyzeDone] = useState(false); // true when embed+links finished
 
   const done = crawl?.crawl_status === "completed";
   const running = crawl?.crawl_status === "crawling";
@@ -36,16 +38,20 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     if (d.audit) setAudit(d.audit);
     setSuggestions(d.suggestions);
 
-    // If we were analyzing and suggestions appeared, stop
-    if (analyzing && d.suggestions > 0) {
-      setAnalyzing(false);
+    if (analyzing) {
+      // Stop analyzing if: suggestions appeared OR 3 minutes elapsed (covers 0-suggestion case)
+      const elapsed = (Date.now() - analyzeStarted) / 1000;
+      if (d.suggestions > 0 || elapsed > 180) {
+        setAnalyzing(false);
+        setAnalyzeDone(true);
+      }
     }
 
     // Stop polling when everything is done
     if (d.crawl?.crawl_status === "completed" && d.audit?.pages_audited > 0 && !analyzing) {
       setPolling(false);
     }
-  }, [siteId, analyzing]);
+  }, [siteId, analyzing, analyzeStarted]);
 
   useEffect(() => {
     if (!polling) return;
@@ -56,6 +62,8 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
   // Handle Analyze click
   async function handleAnalyze() {
     setAnalyzing(true);
+    setAnalyzeDone(false);
+    setAnalyzeStarted(Date.now());
     setPolling(true);
     try {
       await startEmbed(siteId);
@@ -93,10 +101,12 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
                 ? `${suggestions} link suggestions found`
                 : analyzing
                   ? "Embedding pages and finding link opportunities..."
-                  : "Find missing links with AI"
+                  : analyzeDone
+                    ? "Analysis complete — no new link opportunities found (existing linking is good)"
+                    : "Find missing links with AI"
             }
-            status={suggestions > 0 ? "done" : analyzing ? "running" : "pending"}
-            action={hasAudit && suggestions === 0 && !analyzing ? (
+            status={suggestions > 0 || analyzeDone ? "done" : analyzing ? "running" : "pending"}
+            action={hasAudit && suggestions === 0 && !analyzing && !analyzeDone ? (
               <button onClick={handleAnalyze} className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">
                 Analyze
               </button>
