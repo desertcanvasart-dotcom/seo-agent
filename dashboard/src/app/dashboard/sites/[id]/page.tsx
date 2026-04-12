@@ -21,6 +21,7 @@ export default async function SiteOverviewPage({ params }: { params: Promise<{ i
       initialCrawl={crawlData}
       initialAudit={auditData?.summary || null}
       initialSuggestions={suggestionsData?.total || 0}
+      initialAnalyzed={!!suggestionsData?.analyzed}
       initialBriefs={briefsData?.briefs?.length || 0}
     />
   );

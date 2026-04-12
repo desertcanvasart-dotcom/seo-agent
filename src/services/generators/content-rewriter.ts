@@ -315,13 +315,16 @@ export async function rewriteSiteContent(
       const result = await rewritePageContent(page, audit);
 
       if (result.rewrites.length > 0 || result.faq_additions.length > 0) {
-        await supabase.from("generated_fixes").upsert({
+        const { error: upsertErr } = await supabase.from("generated_fixes").upsert({
           site_id: siteId,
           page_id: page.id,
           fix_type: "content_rewrite",
           status: "pending",
           generated_content: result as any,
         }, { onConflict: "page_id,fix_type" });
+        if (upsertErr) {
+          console.error(`   ❌ generated_fixes upsert (content_rewrite) for ${page.path} failed: ${upsertErr.message}`);
+        }
 
         results.push(result);
         console.log(`   ✅ ${page.path}: ${result.rewrites.length} rewrites, ${result.faq_additions.length} FAQ pairs`);

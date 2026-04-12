@@ -300,13 +300,16 @@ export async function generateSiteSchemas(
 
       if (result.schemas.length > 0) {
         // Store in generated_fixes table
-        await supabase.from("generated_fixes").upsert({
+        const { error: upsertErr } = await supabase.from("generated_fixes").upsert({
           site_id: siteId,
           page_id: page.id,
           fix_type: "schema",
           status: "pending",
           generated_content: result as any,
         }, { onConflict: "page_id,fix_type" });
+        if (upsertErr) {
+          console.error(`   ❌ generated_fixes upsert (schema) for ${page.path} failed: ${upsertErr.message}`);
+        }
 
         results.push(result);
         console.log(`   ✅ ${page.path}: ${result.schemas.length} schema(s) generated`);

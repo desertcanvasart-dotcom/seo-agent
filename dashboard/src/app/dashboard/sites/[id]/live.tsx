@@ -15,16 +15,23 @@ async function fetchStatus(siteId: string) {
     fetch(`${API_URL}/sites/${siteId}/audit`, { headers: h, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
     fetch(`${API_URL}/sites/${siteId}/links/suggestions?status=pending&limit=1`, { headers: h, cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
   ]);
-  return { crawl, audit: audit?.summary || null, suggestions: suggestions?.total || 0 };
+  return {
+    crawl,
+    audit: audit?.summary || null,
+    suggestions: suggestions?.total || 0,
+    analyzed: !!suggestions?.analyzed,
+  };
 }
 
-export default function SiteLive({ siteId, initialSite, initialCrawl, initialAudit, initialSuggestions, initialBriefs }: any) {
+export default function SiteLive({ siteId, initialSite, initialCrawl, initialAudit, initialSuggestions, initialAnalyzed, initialBriefs }: any) {
   const [crawl, setCrawl] = useState(initialCrawl);
   const [audit, setAudit] = useState(initialAudit);
   const [suggestions, setSuggestions] = useState(initialSuggestions);
+  const [analyzed, setAnalyzed] = useState<boolean>(!!initialAnalyzed);
   const [polling, setPolling] = useState(true);
+  // linkStatus derives from persisted `analyzed` (server-backed) so it survives reloads.
   const [linkStatus, setLinkStatus] = useState<"idle" | "running" | "done">(
-    initialSuggestions > 0 ? "done" : "idle"
+    initialAnalyzed || initialSuggestions > 0 ? "done" : "idle"
   );
 
   const done = crawl?.crawl_status === "completed";
@@ -37,9 +44,10 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
     if (d.crawl) setCrawl(d.crawl);
     if (d.audit) setAudit(d.audit);
     setSuggestions(d.suggestions);
+    setAnalyzed(d.analyzed);
 
-    // If link analysis was running and suggestions appeared, mark done
-    if (linkStatus === "running" && d.suggestions > 0) {
+    // If analysis has completed on the server (embeddings exist), mark done.
+    if (d.analyzed && linkStatus !== "done") {
       setLinkStatus("done");
     }
 
@@ -100,12 +108,12 @@ export default function SiteLive({ siteId, initialSite, initialCrawl, initialAud
                 ? `${suggestions} link suggestions found`
                 : linkStatus === "running"
                   ? "Embedding pages and finding link opportunities..."
-                  : linkStatus === "done"
+                  : analyzed || linkStatus === "done"
                     ? "Analysis complete — no new link opportunities found"
                     : "Find missing links with AI"
             }
-            status={suggestions > 0 || linkStatus === "done" ? "done" : linkStatus === "running" ? "running" : "pending"}
-            action={hasAudit && suggestions === 0 && linkStatus === "idle" ? (
+            status={suggestions > 0 || analyzed || linkStatus === "done" ? "done" : linkStatus === "running" ? "running" : "pending"}
+            action={hasAudit && suggestions === 0 && !analyzed && linkStatus === "idle" ? (
               <button onClick={handleAnalyze} className="text-xs bg-[#2d5a3d] text-white px-3 py-1.5 rounded-lg hover:bg-[#234a31]">
                 Analyze
               </button>

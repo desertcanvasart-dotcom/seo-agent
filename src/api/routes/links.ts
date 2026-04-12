@@ -108,9 +108,19 @@ links.get("/suggestions", async (c) => {
 
   if (error) return c.json({ error: error.message }, 500);
 
+  // Determine whether link analysis has ever run on this site — i.e. at least
+  // one page has an embedding. This lets the UI persist the "analysis complete"
+  // state across reloads even when 0 suggestions were produced.
+  const { count: embeddedCount } = await supabase
+    .from("pages")
+    .select("id", { count: "exact", head: true })
+    .eq("site_id", siteId)
+    .not("embedding", "is", null);
+
   return c.json({
     suggestions: data,
     total: count,
+    analyzed: (embeddedCount || 0) > 0,
     limit,
     offset,
   });

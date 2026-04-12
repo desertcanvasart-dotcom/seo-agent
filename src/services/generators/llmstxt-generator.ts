@@ -248,13 +248,16 @@ export async function generateLlmsTxt(siteId: string): Promise<LlmsTxtResult> {
   };
 
   // Store in generated_fixes table
-  await supabase.from("generated_fixes").upsert({
+  const { error: upsertErr } = await supabase.from("generated_fixes").upsert({
     site_id: siteId,
     page_id: null,
     fix_type: "llms_txt",
     status: "pending",
     generated_content: result as any,
   }, { onConflict: "site_id,fix_type" });
+  if (upsertErr) {
+    console.error(`   ❌ generated_fixes upsert (llms_txt) failed: ${upsertErr.message}`);
+  }
 
   console.log(`   ✅ llms.txt generated: ${result.section_count} sections, ${result.word_count} words`);
 

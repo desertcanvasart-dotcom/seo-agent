@@ -89,12 +89,26 @@ function findContextSnippet(bodyText: string, targetTitle: string, targetKeyword
 }
 
 // ─── Check if link already exists ────────────────────────────────
+// Returns true only when the existing link is likely a *contextual* body link
+// (i.e., the target is not a nav/footer destination linked from most pages).
+// Nav-linked targets (linked from a large share of pages) are treated as NOT
+// already linked, because a contextual in-body link is still a valid addition.
 function linkAlreadyExists(
   sourceLinks: { url: string; isInternal: boolean }[],
-  targetUrl: string
+  targetUrl: string,
+  targetInboundCount: number,
+  totalPages: number
 ): boolean {
   const cleanTarget = targetUrl.replace(/\/$/, "");
-  return sourceLinks.some((l) => l.url.replace(/\/$/, "") === cleanTarget);
+  const exists = sourceLinks.some((l) => l.url.replace(/\/$/, "") === cleanTarget);
+  if (!exists) return false;
+
+  // If the target is linked from >=30% of pages, it's almost certainly a
+  // nav/footer link. A contextual body link is still a distinct SEO asset.
+  const navRatio = totalPages > 0 ? targetInboundCount / totalPages : 0;
+  if (navRatio >= 0.3) return false;
+
+  return true;
 }
 
 // ─── Generate link suggestions for a site ────────────────────────
@@ -114,6 +128,12 @@ export async function generateLinkSuggestions(
 
   console.log(`\n🔗 Generating link suggestions for ${pages.length} pages`);
 
+  const totalPages = pages.length;
+  // Build an inbound-count map so we can detect nav-linked targets
+  const inboundByPageId = new Map<string, number>(
+    pages.map((p) => [p.id, p.inbound_link_count || 0])
+  );
+
   let totalSuggestions = 0;
   let orphanCount = 0;
 
@@ -127,8 +147,8 @@ export async function generateLinkSuggestions(
 
     console.log(`   🔍 [${i + 1}/${pages.length}] ${page.path}`);
 
-    // Find similar pages
-    const similar = await findSimilarPages(page.id, siteId, 8, 0.25);
+    // Find similar pages — lower threshold to surface more opportunities
+    const similar = await findSimilarPages(page.id, siteId, 12, 0.15);
 
     if (similar.length === 0) continue;
 
@@ -139,18 +159,19 @@ export async function generateLinkSuggestions(
 
     // Generate suggestions for each similar page
     for (const target of similar) {
-      // Skip if link already exists
-      if (linkAlreadyExists(page.outbound_links || [], target.url)) continue;
-
-      // Skip self-links and same content type with low similarity
+      // Skip self-links
       if (target.page_id === page.id) continue;
+
+      // Skip only if a *contextual* (non-nav) link already exists
+      const targetInbound = inboundByPageId.get(target.page_id) ?? 0;
+      if (linkAlreadyExists(page.outbound_links || [], target.url, targetInbound, totalPages)) continue;
 
       // Calculate relevance score (similarity adjusted by content type pairing)
       const typeMultiplier = LINK_RELEVANCE[page.content_type]?.[target.content_type] ?? 0.7;
       const relevanceScore = target.similarity * typeMultiplier;
 
       // Skip low-relevance suggestions
-      if (relevanceScore < 0.25) continue;
+      if (relevanceScore < 0.15) continue;
 
       // Determine confidence
       let confidence: "low" | "medium" | "high" = "low";
@@ -193,7 +214,11 @@ export async function generateLinkSuggestions(
         { onConflict: "source_page_id,target_page_id" }
       );
 
-      if (!insertError) totalSuggestions++;
+      if (insertError) {
+        console.error(`   ❌ link_suggestions upsert failed: ${insertError.message}`);
+      } else {
+        totalSuggestions++;
+      }
     }
 
     if (onProgress) onProgress(i + 1, pages.length);

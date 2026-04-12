@@ -184,13 +184,16 @@ All AI crawlers listed above must be explicitly allowed. Preserve all other exis
     generated_at: new Date().toISOString(),
   };
 
-  await supabase.from("generated_fixes").upsert({
+  const { error: upsertErr } = await supabase.from("generated_fixes").upsert({
     site_id: siteId,
     page_id: null,
     fix_type: "robots_txt",
     status: "pending",
     generated_content: result as any,
   }, { onConflict: "site_id,fix_type" });
+  if (upsertErr) {
+    console.error(`   ❌ generated_fixes upsert (robots_txt) failed: ${upsertErr.message}`);
+  }
 
   console.log(`   ✅ robots.txt fix generated — unblocks: ${blockedBots.join(", ")}`);
   return result;
@@ -406,13 +409,16 @@ Return a JSON array with one object per page. Always provide both suggested_titl
       // Store each fix
       for (const fix of validated) {
         if (fix.suggested_title || fix.suggested_meta) {
-          await supabase.from("generated_fixes").upsert({
+          const { error: upsertErr } = await supabase.from("generated_fixes").upsert({
             site_id: siteId,
             page_id: fix.page_id,
             fix_type: "meta_title",
             status: "pending",
             generated_content: fix as any,
           }, { onConflict: "page_id,fix_type" });
+          if (upsertErr) {
+            console.error(`   ❌ generated_fixes upsert (meta_title) for ${fix.path} failed: ${upsertErr.message}`);
+          }
         }
       }
 
