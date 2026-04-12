@@ -1,7 +1,8 @@
 import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
+import { env } from "../../config/env.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -144,8 +145,9 @@ ${currentRobotsTxt ? `\`\`\`\n${currentRobotsTxt}\n\`\`\`` : "(robots.txt not fo
 All AI crawlers listed above must be explicitly allowed. Preserve all other existing rules.`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     max_tokens: 2048,
+    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: buildRobotsSystemPrompt() },
       { role: "user", content: userPrompt },
@@ -225,21 +227,23 @@ META DESCRIPTION RULES:
 - Be specific — mention a key fact, number, or differentiator from the page
 - Do NOT use ALL CAPS or excessive punctuation
 
-OUTPUT FORMAT — return ONLY a valid JSON array, no prose, no markdown:
-[
-  {
-    "page_id": "string",
-    "url": "string",
-    "path": "string",
-    "content_type": "string",
-    "current_title": "string or null",
-    "suggested_title": "string (always provide a new title)",
-    "title_issue": "string or null",
-    "current_meta": "string or null",
-    "suggested_meta": "string (always provide a new meta)",
-    "meta_issue": "string or null"
-  }
-]`;
+OUTPUT FORMAT — return ONLY a valid JSON object with a "fixes" array, no prose, no markdown:
+{
+  "fixes": [
+    {
+      "page_id": "string",
+      "url": "string",
+      "path": "string",
+      "content_type": "string",
+      "current_title": "string or null",
+      "suggested_title": "string (always provide a new title)",
+      "title_issue": "string or null",
+      "current_meta": "string or null",
+      "suggested_meta": "string (always provide a new meta)",
+      "meta_issue": "string or null"
+    }
+  ]
+}`;
 }
 
 /**
@@ -361,11 +365,12 @@ These pages have already been flagged as failing title or meta audit checks — 
 PAGES:
 ${JSON.stringify(batch, null, 2)}
 
-Return a JSON array with one object per page. Always provide both suggested_title (30-60 chars) and suggested_meta (120-155 chars).`;
+Return a JSON object of the form { "fixes": [ ... ] } with one object per page. Always provide both suggested_title (30-60 chars) and suggested_meta (120-155 chars).`;
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-4o",
       max_tokens: 3000,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildMetaSystemPrompt() },
         { role: "user", content: userPrompt },
@@ -380,7 +385,13 @@ Return a JSON array with one object per page. Always provide both suggested_titl
       .trim();
 
     try {
-      const parsed: MetaTitleFix[] = JSON.parse(raw);
+      const parsedRaw = JSON.parse(raw);
+      // Accept either { fixes: [...] } (json_object mode) or a bare array (defensive fallback)
+      const parsed: MetaTitleFix[] = Array.isArray(parsedRaw)
+        ? parsedRaw
+        : Array.isArray(parsedRaw?.fixes)
+          ? parsedRaw.fixes
+          : [];
 
       // Validate and trim overlong outputs
       const validated = parsed.map((p) => {

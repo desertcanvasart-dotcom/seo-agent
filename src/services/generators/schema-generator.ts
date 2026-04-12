@@ -1,7 +1,9 @@
 import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { env } from "../../config/env.js";
+
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -126,16 +128,18 @@ SCHEMA QUALITY STANDARDS:
 - Product / Offer: price should only be included if found in the content — omit if not present
 - BreadcrumbList: derive from the URL path structure
 
-Return a JSON array of objects with this exact shape:
-[
-  {
-    "schema_type": "string — the @type value(s) in this block, comma-separated if @graph",
-    "placement": "head",
-    "priority": "critical | high | medium",
-    "json_ld": "<script type=\\"application/ld+json\\">{ complete valid JSON-LD }</script>",
-    "rationale": "One specific sentence."
-  }
-]`;
+Return a JSON object of the form { "schemas": [ ... ] } with this exact shape:
+{
+  "schemas": [
+    {
+      "schema_type": "string — the @type value(s) in this block, comma-separated if @graph",
+      "placement": "head",
+      "priority": "critical | high | medium",
+      "json_ld": "<script type=\\"application/ld+json\\">{ complete valid JSON-LD }</script>",
+      "rationale": "One specific sentence."
+    }
+  ]
+}`;
 }
 
 // ─── Build the user prompt ────────────────────────────────────────
@@ -220,8 +224,9 @@ export async function generatePageSchemas(
   const userPrompt = buildUserPrompt(page, site, missing);
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     max_tokens: 4096,
+    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
@@ -239,8 +244,10 @@ export async function generatePageSchemas(
 
   let schemas: GeneratedSchema[] = [];
   try {
-    schemas = JSON.parse(cleaned);
-    if (!Array.isArray(schemas)) schemas = [schemas];
+    const parsed = JSON.parse(cleaned);
+    if (Array.isArray(parsed)) schemas = parsed;
+    else if (Array.isArray(parsed?.schemas)) schemas = parsed.schemas;
+    else schemas = [parsed];
   } catch (err) {
     console.error(`   ❌ Schema JSON parse failed for ${page.path}:`, (err as Error).message);
     console.error("   Raw output:", raw.slice(0, 500));

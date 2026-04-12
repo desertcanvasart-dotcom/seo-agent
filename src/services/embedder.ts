@@ -86,10 +86,18 @@ export async function embedSitePages(
 
         const embedding = await getEmbedding(text);
 
-        // Store embedding — use raw SQL via RPC since supabase-js doesn't handle vector well
+        // Sanity-check: text-embedding-3-small must return 1536 dims.
+        // Any other length means the model changed and will fail the vector(1536) cast.
+        if (embedding.length !== 1536) {
+          throw new Error(`Unexpected embedding length ${embedding.length} (expected 1536)`);
+        }
+
+        // Store embedding as a stringified array — pgvector accepts "[0.1,0.2,...]" and
+        // casts it to vector(1536). supabase-js cannot send a native number[] through
+        // PostgREST for pgvector columns, so this stringified form is the idiomatic path.
         const { error: updateError } = await supabase
           .from("pages")
-          .update({ embedding: JSON.stringify(embedding) } as any)
+          .update({ embedding: JSON.stringify(embedding) } as never)
           .eq("id", page.id);
 
         if (updateError) {
@@ -116,6 +124,24 @@ export async function embedSitePages(
   }
 
   console.log(`\n✅ Embedding complete: ${embedded} embedded, ${failed} failed`);
+
+  // Post-embed verification: count rows that actually have a non-null embedding.
+  // This exposes silent cast failures that supabase-js reports as successful updates.
+  const { count: verifiedCount, error: verifyErr } = await supabase
+    .from("pages")
+    .select("id", { count: "exact", head: true })
+    .eq("site_id", siteId)
+    .not("embedding", "is", null);
+
+  if (verifyErr) {
+    console.error(`   ⚠️  Post-embed verification query failed: ${verifyErr.message}`);
+  } else {
+    console.log(`   📊 Post-embed check: ${verifiedCount}/${pages.length} pages have non-null embeddings`);
+    if ((verifiedCount || 0) === 0 && embedded > 0) {
+      console.error(`   ❌ STORAGE BUG: ${embedded} updates reported success but 0 rows have embeddings — likely a pgvector cast failure`);
+    }
+  }
+
   return { embedded, failed };
 }
 
@@ -133,7 +159,15 @@ export async function findSimilarPages(
     .eq("id", pageId)
     .single();
 
-  if (!page?.embedding) return [];
+  if (!page?.embedding) {
+    console.log(`   🔍 findSimilarPages(${pageId}): source page has no embedding`);
+    return [];
+  }
+
+  // supabase-js returns pgvector columns as a string like "[0.123,0.456,...]".
+  // PostgREST will cast this back to vector(1536) when passed to the RPC.
+  const embType = typeof page.embedding;
+  const embLen = embType === "string" ? (page.embedding as string).length : -1;
 
   // Query pgvector for similar pages
   const { data, error } = await supabase.rpc("match_pages", {
@@ -144,8 +178,16 @@ export async function findSimilarPages(
   });
 
   if (error) {
-    console.error("Similarity search error:", error.message);
+    console.error(`   ❌ match_pages RPC error: ${error.message} (emb type=${embType}, strlen=${embLen})`);
     return [];
+  }
+
+  const rawCount = (data || []).length;
+  if (rawCount === 0) {
+    console.log(`   🔍 match_pages returned 0 rows for ${pageId} (threshold=${threshold}, emb type=${embType}, strlen=${embLen})`);
+  } else {
+    const firstDist = (data as any)[0]?.distance;
+    console.log(`   🔍 match_pages returned ${rawCount} rows for ${pageId}, first distance=${firstDist?.toFixed?.(4)}`);
   }
 
   // Filter out the page itself

@@ -1,7 +1,9 @@
 import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import { env } from "../../config/env.js";
+
+const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -217,7 +219,7 @@ export async function generateLlmsTxt(siteId: string): Promise<LlmsTxtResult> {
   const siteName = site.name || site.domain;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-4o",
     max_tokens: 2048,
     messages: [
       { role: "system", content: buildSystemPrompt() },
