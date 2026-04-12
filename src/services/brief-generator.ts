@@ -162,10 +162,6 @@ export async function generateAiDraft(briefId: string): Promise<void> {
     .eq("id", briefId);
 
   try {
-    // Dynamic import to avoid requiring API key if not generating drafts
-    const { default: Anthropic } = await import("@anthropic-ai/sdk");
-    const anthropic = new Anthropic();
-
     const outline = (brief.outline as OutlineSection[]) || [];
     const questions = (brief.questions_to_answer as string[]) || [];
     const internalLinks = (brief.internal_links as InternalLinkSuggestion[]) || [];
@@ -197,16 +193,13 @@ SCHEMA: This article should support ${brief.recommended_schema} structured data.
 
 Write the full article in markdown format. Be factual, specific, and authoritative. Write as a knowledgeable expert with deep subject-matter expertise.`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const openai = new (await import("openai")).default({ apiKey: process.env.OPENAI_API_KEY });
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 4096,
       messages: [{ role: "user", content: prompt }],
     });
-
-    const draft = response.content
-      .filter((c) => c.type === "text")
-      .map((c) => (c as any).text)
-      .join("");
+    const draft = response.choices[0].message.content || "";
 
     await supabase
       .from("content_briefs")

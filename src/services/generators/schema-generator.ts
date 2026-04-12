@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const anthropic = new Anthropic();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -219,18 +219,16 @@ export async function generatePageSchemas(
   const systemPrompt = buildSystemPrompt();
   const userPrompt = buildUserPrompt(page, site, missing);
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: "user", content: userPrompt }],
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ],
   });
 
-  const raw = response.content
-    .filter((c) => c.type === "text")
-    .map((c) => (c as any).text)
-    .join("")
-    .trim();
+  const raw = (response.choices[0].message.content || "").trim();
 
   // Strip markdown fences if Claude added them despite instructions
   const cleaned = raw

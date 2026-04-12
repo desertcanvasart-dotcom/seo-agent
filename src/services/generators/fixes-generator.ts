@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const anthropic = new Anthropic();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -143,23 +143,16 @@ ${currentRobotsTxt ? `\`\`\`\n${currentRobotsTxt}\n\`\`\`` : "(robots.txt not fo
 
 All AI crawlers listed above must be explicitly allowed. Preserve all other existing rules.`;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 2048,
-    system: [
-      {
-        type: "text",
-        text: buildRobotsSystemPrompt(),
-        cache_control: { type: "ephemeral" },
-      },
+    messages: [
+      { role: "system", content: buildRobotsSystemPrompt() },
+      { role: "user", content: userPrompt },
     ],
-    messages: [{ role: "user", content: userPrompt }],
   });
 
-  const raw = response.content
-    .filter((c) => c.type === "text")
-    .map((c) => (c as any).text)
-    .join("")
+  const raw = (response.choices[0].message.content || "")
     .trim()
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
@@ -367,23 +360,16 @@ ${JSON.stringify(batch, null, 2)}
 
 Return a JSON array with one object per page. Always provide both suggested_title (30-60 chars) and suggested_meta (120-155 chars).`;
 
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
       max_tokens: 3000,
-      system: [
-        {
-          type: "text",
-          text: buildMetaSystemPrompt(),
-          cache_control: { type: "ephemeral" },
-        },
+      messages: [
+        { role: "system", content: buildMetaSystemPrompt() },
+        { role: "user", content: userPrompt },
       ],
-      messages: [{ role: "user", content: userPrompt }],
     });
 
-    const raw = response.content
-      .filter((c) => c.type === "text")
-      .map((c) => (c as any).text)
-      .join("")
+    const raw = (response.choices[0].message.content || "")
       .trim()
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")

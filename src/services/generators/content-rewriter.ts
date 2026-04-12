@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const anthropic = new Anthropic();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -182,23 +182,16 @@ export async function rewritePageContent(
 
   console.log(`   ✍️  Rewriting content for ${page.path} (citability: ${audit.citability_score}/100)`);
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 4096,
-    system: [
-      {
-        type: "text",
-        text: buildSystemPrompt(),
-        cache_control: { type: "ephemeral" },
-      },
+    messages: [
+      { role: "system", content: buildSystemPrompt() },
+      { role: "user", content: buildUserPrompt(page, audit) },
     ],
-    messages: [{ role: "user", content: buildUserPrompt(page, audit) }],
   });
 
-  const raw = response.content
-    .filter((c) => c.type === "text")
-    .map((c) => (c as any).text)
-    .join("")
+  const raw = (response.choices[0].message.content || "")
     .trim()
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")

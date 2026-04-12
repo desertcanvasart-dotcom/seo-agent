@@ -1,7 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 import { supabase } from "../../db/client.js";
 
-const anthropic = new Anthropic();
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -216,17 +216,11 @@ export async function generateLlmsTxt(siteId: string): Promise<LlmsTxtResult> {
 
   const siteName = site.name || site.domain;
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
     max_tokens: 2048,
-    system: [
-      {
-        type: "text",
-        text: buildSystemPrompt(),
-        cache_control: { type: "ephemeral" },
-      },
-    ],
     messages: [
+      { role: "system", content: buildSystemPrompt() },
       {
         role: "user",
         content: buildUserPrompt(site.domain, siteName, siteDescription, pages),
@@ -234,11 +228,7 @@ export async function generateLlmsTxt(siteId: string): Promise<LlmsTxtResult> {
     ],
   });
 
-  const content = response.content
-    .filter((c) => c.type === "text")
-    .map((c) => (c as any).text)
-    .join("")
-    .trim();
+  const content = (response.choices[0].message.content || "").trim();
 
   // Validate structural requirements
   const validation = validateLlmsTxt(content);
